@@ -1,66 +1,7 @@
-<!doctype html>
-<html lang="zh-Hant">
-<head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Python 畢旅冒險｜任務模式</title>
-<link rel="stylesheet" href="python-journey.css">
-</head>
-<body>
-<header class="gamebar">
-  <a class="homebtn" href="../index.html">← Python 首頁</a>
-  <div class="game-title">🐍 Python 畢旅冒險</div>
-  <div class="energy">⭐ <b id="starCount">0</b><span>/30</span></div>
-</header>
-
-<main class="game-shell">
-  <section id="teacherPanel" class="teacher-panel" hidden>
-    <div><b>👩‍🏫 教師預覽</b><span> 可直接查看任一挑戰，不改變學生進度。</span></div>
-    <select id="teacherJump"></select>
-    <a href="python.html">回學生模式</a>
-  </section>
-
-  <section class="mini-map" aria-label="冒險進度">
-    <div class="map-caption"><span id="mapMessage">下一站正在等你！</span><button id="showMapBtn" class="textbtn">🗺️ 看冒險地圖</button></div>
-    <div id="miniNodes" class="mini-nodes"></div>
-  </section>
-
-  <section id="missionScreen" class="mission-screen"></section>
-</main>
-
-<dialog id="mapDialog" class="map-dialog">
-  <button class="xbtn" id="closeMap">×</button>
-  <h2>🗺️ Python 畢旅冒險地圖</h2>
-  <p>走過的地方會留下 ⭐；前方的區域仍藏在雲霧裡。</p>
-  <div id="fullMap" class="full-map"></div>
-</dialog>
-
-<dialog id="rewardDialog" class="reward-dialog">
-  <div id="rewardBody"></div>
-</dialog>
-
-<dialog id="certificateDialog" class="certificate-dialog">
-  <button class="xbtn no-print" id="closeCertificate">×</button>
-  <div class="certificate" id="certificate">
-    <div class="cert-stars">⭐ 🐍 ⭐</div>
-    <p class="cert-kicker">PYTHON JOURNEY</p>
-    <h1>Python 畢旅冒險完成證書</h1>
-    <p class="cert-intro">恭喜</p>
-    <div class="student-name" id="certName">Python 冒險家</div>
-    <p>完成 Python 畢旅冒險全部任務，展現持續挑戰、修改程式與解決問題的能力。</p>
-    <div class="skill-badges">
-      <span>print</span><span>變數</span><span>input</span><span>運算</span>
-      <span>條件判斷</span><span>and / or</span><span>for</span><span>while</span><span>綜合應用</span>
-    </div>
-    <div class="cert-result">完成 10 個冒險關卡　⭐ 30 顆星</div>
-    <div class="cert-foot"><span id="certDate"></span><span>🏅 Python 冒險家</span></div>
-  </div>
-  <div class="cert-actions no-print">
-    <label>證書姓名 <input id="studentName" maxlength="20" placeholder="輸入姓名"></label>
-    <button id="applyName">套用姓名</button><button id="printCertificate">🖨️ 列印／存成 PDF</button>
-  </div>
-</dialog>
-
-<script src="config.js"></script>
-<script src="../shared/pyrunner.js"></script>
-<script src="content/python-journey.js"></script>
-</body></html>
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Python 畢旅冒險｜學生版</title><link rel="stylesheet" href="python-journey.css"></head><body>
+<header class="top"><a href="../index.html">← 首頁</a><b>🐍 Python 畢旅冒險</b><span>⭐ <strong id="stars">0</strong>/30</span></header>
+<main><section class="tools"><div id="place"></div><a href="python-guide.html" target="_blank">📘 Python 指令小百科</a></section><div id="map"></div><section id="mission"></section></main>
+<dialog id="reward"><div id="rewardBody"></div></dialog>
+<dialog id="cert"><button id="closeCert" class="close no-print">×</button><div class="certificate"><div class="big">⭐ 🐍 ⭐</div><small>PYTHON JOURNEY</small><h1>Python 畢旅冒險完成證書</h1><p>恭喜</p><div id="certName" class="name">Python 冒險家</div><p>完成 10 個冒險站、30 個 Python 挑戰，展現從 Scratch 概念轉換到 Python、查找指令、除錯與解決問題的能力。</p><div class="badges">print・變數・input・運算・條件判斷・for・while・綜合應用</div><h3>⭐ 30 顆星</h3><footer><span id="date"></span><b>🏅 Python 冒險家</b></footer></div><div class="certActions no-print"><input id="studentName" placeholder="輸入證書姓名"><button id="applyName">套用姓名</button><button id="printCert">🖨️ 列印／存成 PDF</button></div></dialog>
+<script src="config.js"></script><script src="../shared/pyrunner.js"></script><script src="content/python-journey.js"></script></body></html>
