@@ -2,6 +2,7 @@ const LEVELS=[{"id": "p1", "icon": "👋", "title": "第 1 關｜哈囉，旅伴
 const TOTAL_CHALLENGES=26;
 
 const KEY="course115_v3_progress", NAMEKEY="course115_v3_name";
+const PROFILE_KEY="course115_student_profile_v5";
 let state=JSON.parse(localStorage.getItem(KEY)||"{}"), engine="loading", hintN=0;
 const $=s=>document.querySelector(s);
 const stepsOf=l=>l.steps.length;
@@ -212,6 +213,251 @@ function validate(code,step){
   return fail("這題的驗證規則尚未設定。");
 }
 
+
+const PY_RESERVED=new Set([
+"False","None","True","and","as","assert","async","await","break","class","continue","def","del",
+"elif","else","except","finally","for","from","global","if","import","in","is","lambda","nonlocal",
+"not","or","pass","raise","return","try","while","with","yield"
+]);
+
+function debugCoach(err, code){
+  const raw=String(err||"");
+  const lines=String(code||"").split(/\n/);
+  let lineNo=null;
+  const lm=raw.match(/line\s+(\d+)/i);
+  if(lm) lineNo=Number(lm[1]);
+  const badLine=(lineNo && lines[lineNo-1]) ? lines[lineNo-1].trim() : "";
+
+  // Reserved word used as variable: e.g. class = ...
+  for(let i=0;i<lines.length;i++){
+    const m=lines[i].match(/^\s*([A-Za-z_]\w*)\s*=/);
+    if(m && PY_RESERVED.has(m[1])){
+      return {
+        title:"🐍 Python 語法問題",
+        where:`第 ${i+1} 行：${lines[i].trim()}`,
+        why:`「${m[1]}」是 Python 已經有特殊用途的保留字，不能拿來當變數名稱。`,
+        next:"請替這筆資料換一個變數名稱。可以按「🌐 變數英文小幫手」找合適的英文名稱。"
+      };
+    }
+  }
+
+  if(/IndentationError|unexpected indent|expected an indented block/i.test(raw)){
+    return {
+      title:"🐍 縮排問題",
+      where:badLine?`可能在第 ${lineNo} 行：${badLine}`:"請檢查 if、elif、else、for、while 後面的程式。",
+      why:"Python 用縮排表示哪些程式屬於同一個區塊。",
+      next:"看看冒號下一行是否有一致的縮排，通常使用 4 個空格。"
+    };
+  }
+
+  if(/NameError/i.test(raw)){
+    const nm=raw.match(/name ['"]([^'"]+)['"] is not defined/i);
+    return {
+      title:"🐍 找不到變數",
+      where:badLine?`可能在第 ${lineNo} 行：${badLine}`:"檢查錯誤訊息附近的變數名稱。",
+      why:nm?`Python 找不到「${nm[1]}」。可能還沒建立，或前後拼法不一樣。`:"可能使用了還沒建立的變數，或變數名稱前後拼法不同。",
+      next:"從變數第一次出現的位置開始，比對每一次拼字。"
+    };
+  }
+
+  if(/ValueError.*invalid literal for int/i.test(raw)){
+    return {
+      title:"🐍 數字轉換問題",
+      where:badLine?`可能在第 ${lineNo} 行：${badLine}`:"檢查 int() 接收到的內容。",
+      why:"int() 只能把像 12、300 這類整數文字轉成整數。",
+      next:"執行時請輸入整數；如果題目允許小數，要想想是否應使用 float()。"
+    };
+  }
+
+  if(/TypeError/i.test(raw)){
+    return {
+      title:"🐍 資料型態問題",
+      where:badLine?`可能在第 ${lineNo} 行：${badLine}`:"檢查運算兩邊的資料。",
+      why:"這個運算使用了不相容的資料型態，例如文字和數字直接運算。",
+      next:"想想 input() 得到的是文字；需要算數時，是否要先用 int() 或 float() 轉換。"
+    };
+  }
+
+  if(/SyntaxError/i.test(raw)){
+    return {
+      title:"🐍 Python 語法問題",
+      where:badLine?`可能在第 ${lineNo} 行：${badLine}`:"Python 無法讀懂某一行的寫法。",
+      why:"常見原因是括號、引號、冒號沒有成對，或指令寫法不完整。",
+      next:"從錯誤行開始檢查 ()、引號、冒號，也可以順便看上一行。"
+    };
+  }
+
+  if(/timeout|timed out|時間|too long/i.test(raw)){
+    return {
+      title:"🐍 迴圈可能沒有停止",
+      where:"程式執行時間過久。",
+      why:"while 的條件可能一直成立。",
+      next:"檢查迴圈裡是否有更新會影響 while 條件的變數。"
+    };
+  }
+
+  return {
+    title:"🐍 Python 還不能執行",
+    where:badLine?`可能在第 ${lineNo} 行：${badLine}`:"Python 回報了錯誤。",
+    why:raw.replace(/\n/g," ").slice(0,180),
+    next:"先檢查錯誤附近的拼字、括號、引號、冒號與縮排；需要時再使用求助工具。"
+  };
+}
+
+function coachHTML(info){
+  return `<div class="debugCoach">
+    <b>${esc(info.title)}</b>
+    <div class="debugRow"><strong>📍 哪裡：</strong>${esc(info.where)}</div>
+    <div class="debugRow"><strong>🤔 原因：</strong>${esc(info.why)}</div>
+    <div class="debugRow"><strong>➡️ 下一步：</strong>${esc(info.next)}</div>
+  </div>`;
+}
+
+const VAR_WORDS={
+"姓名":["name","student_name"],
+"名字":["name","student_name"],
+"班級":["class_name","my_class"],
+"座號":["seat_no","student_no"],
+"年齡":["age"],
+"身高":["height"],
+"體重":["weight"],
+"分數":["score"],
+"成績":["score"],
+"目的地":["destination"],
+"城市":["city"],
+"地點":["place"],
+"天數":["days"],
+"活動":["activity"],
+"票價":["ticket_price"],
+"張數":["ticket_count"],
+"數量":["count","quantity"],
+"人數":["people_count"],
+"總數":["total"],
+"總額":["total_amount"],
+"預算":["budget"],
+"總預算":["total_budget"],
+"交通費":["transport_cost"],
+"餐費":["meal_cost"],
+"剩餘預算":["remaining_budget"],
+"距離":["distance"],
+"時間":["time"],
+"速度":["speed"],
+"氣溫":["temperature"],
+"溫度":["temperature"],
+"降雨機率":["rain_chance"],
+"密碼":["password"],
+"答案":["answer"],
+"猜測":["guess"],
+"次數":["attempts","count"],
+"邊長":["side_length"],
+"面積":["area"],
+"電量":["battery_level"]
+};
+
+function variableSuggestions(q){
+  q=String(q||"").trim();
+  if(!q){
+    return {items:[],note:"先輸入你想命名的中文資料，例如：班級、體重、剩餘預算。"};
+  }
+  let items=VAR_WORDS[q]||[];
+  if(!items.length){
+    return {items:[],note:"目前小字典還沒有這個詞。可以換一個較簡單的中文關鍵字，或自己用小寫英文＋底線命名。"};
+  }
+  return {
+    items,
+    note:"這些是變數命名建議，不是闖關答案。點一下可以複製名稱，再由你決定放在哪裡。"
+  };
+}
+
+function openVarHelper(){
+  $("#varQuery").value="";
+  $("#varResult").innerHTML='<p><b>隨時都可以查變數英文名稱。</b><br>例如輸入「班級」，會避開 Python 保留字 <code>class</code>，建議使用 <code>class_name</code>。</p>';
+  $("#varDialog").showModal();
+}
+
+function searchVar(){
+  const r=variableSuggestions($("#varQuery").value);
+  $("#varResult").innerHTML=
+    (r.items.length
+      ? `<div class="varChoices">${r.items.map(x=>`<button class="varChoice" data-name="${x}"><code>${x}</code></button>`).join("")}</div>`
+      : "")
+    + `<p>${esc(r.note)}</p>
+       <div class="namingRules">
+       <b>Python 變數命名提醒</b><br>
+       ✓ 建議使用小寫英文　✓ 多個單字用 _ 連接<br>
+       ✗ 不可有空格　✗ 不可以數字開頭　✗ 不可使用 class、if、for、while 等保留字
+       </div>`;
+
+  document.querySelectorAll(".varChoice").forEach(b=>{
+    b.onclick=async()=>{
+      const name=b.dataset.name;
+      try{
+        await navigator.clipboard.writeText(name);
+        b.innerHTML=`✓ 已複製 <code>${name}</code>`;
+      }catch(e){
+        b.innerHTML=`<code>${name}</code>`;
+      }
+    };
+  });
+}
+
+function getStudentProfile(){
+  try{return JSON.parse(localStorage.getItem(PROFILE_KEY)||"null")}catch(e){return null}
+}
+function profileIsValid(p){
+  return !!(p && String(p.className||"").trim() && String(p.studentNo||"").trim());
+}
+function updateProfileStrip(){
+  const p=getStudentProfile();
+  const el=document.getElementById("studentProfileText");
+  if(!el) return;
+  if(profileIsValid(p)){
+    el.textContent=`班級 ${p.className}　｜　學號 ${p.studentNo}`;
+  }else{
+    el.textContent="尚未設定";
+  }
+}
+function openProfileDialog(required=true){
+  const p=getStudentProfile()||{};
+  document.getElementById("profileClass").value=p.className||"";
+  document.getElementById("profileStudentNo").value=p.studentNo||"";
+  document.getElementById("profileError").textContent="";
+  const dlg=document.getElementById("profileDialog");
+  if(required){
+    dlg.dataset.required="1";
+  }else{
+    dlg.dataset.required="0";
+  }
+  dlg.showModal();
+}
+function saveStudentProfile(){
+  const className=document.getElementById("profileClass").value.trim();
+  const studentNo=document.getElementById("profileStudentNo").value.trim();
+  const err=document.getElementById("profileError");
+  if(!className || !studentNo){
+    err.textContent="班級與學號都要填寫後才能開始挑戰。";
+    return;
+  }
+  const old=getStudentProfile()||{};
+  const now=new Date().toISOString();
+  const profile={
+    className,
+    studentNo,
+    courseId:"python",
+    createdAt:old.createdAt||now,
+    updatedAt:now
+  };
+  localStorage.setItem(PROFILE_KEY,JSON.stringify(profile));
+  updateProfileStrip();
+  document.getElementById("profileDialog").close();
+}
+function ensureStudentProfile(){
+  updateProfileStrip();
+  const p=getStudentProfile();
+  if(!profileIsValid(p)){
+    openProfileDialog(true);
+  }
+}
 if(window.PYRUN){
   PYRUN.onStatus(s=>{engine=s;render()});
   try{PYRUN.init(CONFIG.PYODIDE_URL).catch(()=>{engine="fail";render()})}
@@ -253,14 +499,14 @@ function render(){
     <textarea id="code" class="editor" spellcheck="false">${esc(s.starter)}</textarea>
     <div class="actions">
       <button id="run" class="run" ${engine==="loading"?"disabled":""}>${engine==="ready"?"▶ 開始挑戰":"⏳ Python 準備中…"}</button>
-      <button id="hintBtn" class="help">💡 我需要線索</button>
+      <button id="hintBtn" class="help">💡 我需要線索</button><button id="varBtn" class="translate">🌐 變數英文小幫手</button>
       <a class="book" href="python-guide.html#${s.ref}" target="_blank">📘 我想查指令</a>
     </div>
     <pre id="out" class="output">先自己完成；需要時再使用線索或指令小百科。</pre>
     <div id="hint"></div><div id="fb"></div>
   </article>`;
   $("#run").onclick=()=>run(l,p.j,s);
-  $("#hintBtn").onclick=()=>showHint(s);
+  $("#hintBtn").onclick=()=>showHint(s); $("#varBtn").onclick=openVarHelper;
 }
 function showHint(s){
   hintN=Math.min(hintN+1,s.hints.length);
@@ -295,8 +541,9 @@ async function run(l,j,s){
       o.textContent="⚠️ Python 尚未準備完成。";
       f.innerHTML='<div class="feedback wait">這不是你的程式錯誤，請稍後再試或重新整理。</div>';
     }else{
-      o.textContent="🔎 "+e.message;
-      f.innerHTML='<div class="feedback wait">先讀 Python 的錯誤訊息並自己檢查；真的卡住時，再使用「我需要線索」或「我想查指令」。</div>';
+      const info=debugCoach(e.message,c);
+      o.textContent="程式目前還不能正常執行。";
+      f.innerHTML=coachHTML(info)+`<details class="rawError"><summary>🔧 查看 Python 原始錯誤訊息</summary><pre>${esc(e.message)}</pre></details>`;
     }
   }finally{
     b.disabled=engine==="loading";
@@ -325,3 +572,4 @@ $("#applyName").onclick=()=>{
 };
 $("#printCert").onclick=()=>window.print();
 render();
+ensureStudentProfile();

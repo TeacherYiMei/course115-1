@@ -33,3 +33,30 @@ dialog{border:0;border-radius:22px;box-shadow:0 30px 90px #1d273d55}dialog::back
 .close{float:right;border:0;border-radius:50%;width:34px;height:34px}.final{text-align:center}.final .pop{font-size:85px}
 @media(max-width:620px){main{padding:10px}.card{padding:20px}.tools{align-items:flex-start}.tools a{font-size:12px}.certificate{padding:17px}.certificate h1{font-size:27px}}
 @media print{body>*:not(#cert){display:none!important}#cert{display:block!important;position:static!important;box-shadow:none!important}.no-print{display:none!important}}
+
+.translate{background:#e7f7f5;color:#17685f}
+.debugCoach{background:#fff7df;border:1px solid #eed58d;border-radius:15px;padding:15px;margin-top:10px;color:#4d432a}
+.debugCoach>b{font-size:18px}
+.debugRow{margin-top:8px;line-height:1.55}
+.rawError{margin-top:10px;background:#f3f4f7;border-radius:12px;padding:10px;color:#596273}
+.rawError summary{cursor:pointer;font-weight:800}
+.rawError pre{white-space:pre-wrap;overflow:auto;font-size:12px}
+.varDialog{width:min(600px,92vw);padding:26px}
+.varSearch{display:flex;gap:8px}
+.varSearch input{flex:1;padding:11px;border:1px solid #cfd6df;border-radius:10px}
+.varSearch button,.varChoice{border:0;border-radius:10px;padding:10px 13px;font-weight:800;cursor:pointer;background:#e7f7f5;color:#17685f}
+.varChoices{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}
+.varChoice code{font-size:16px}
+.namingRules{background:#f2f5f8;border-radius:12px;padding:12px;line-height:1.7}
+.varDialog .close{float:right}
+
+.topTools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.topTools button{border:0;border-radius:11px;padding:9px 12px;font-weight:900;cursor:pointer}
+.studentStrip{margin-top:10px;background:#ffffffd9;border:1px solid #e0e5eb;border-radius:14px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.studentLabel{font-weight:900;margin-right:10px}.profileBtn{border:0;background:#eef1f5;color:#4c5867;border-radius:10px;padding:7px 11px;font-weight:800;cursor:pointer}
+.profileDialog{width:min(520px,92vw);padding:28px}.profileHero{text-align:center;font-size:54px}.profileDialog h2{text-align:center;margin:8px 0 10px}.profileDialog>p{color:#596579;line-height:1.6}
+.fieldLabel{display:block;font-weight:900;margin:15px 0 6px}.fieldLabel span{color:#c14545}.profileInput{width:100%;padding:12px;border:1px solid #ccd4de;border-radius:11px;font-size:16px}
+.profileError{min-height:22px;color:#b43b3b;font-weight:800;margin-top:8px}.profilePrivacy{background:#f3f6f8;color:#607080;border-radius:11px;padding:10px 12px;font-size:13px;margin:10px 0 15px}
+.startAdventureBtn{width:100%;border:0;background:#4f59c7;color:#fff;border-radius:13px;padding:13px;font-weight:900;font-size:16px;cursor:pointer}
+.profileDialog[data-required="1"]::backdrop{background:#1d274890}
+@media(max-width:620px){.tools{flex-direction:column}.topTools{width:100%}.topTools>a,.topTools>button{flex:1;text-align:center}.studentStrip{font-size:13px}}

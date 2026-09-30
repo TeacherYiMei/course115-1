@@ -49,3 +49,20 @@
 - Python 指令小百科擴充為 print、變數、input、int、運算、float/round、if、elif、and/or、for/range、while、random。
 - 進度 key 更新為 `course115_v3_progress`，避免舊版題數與新版結構互相衝突。
 - 證書星數改為依實際挑戰數自動顯示。
+
+## v4 智慧除錯＋變數英文小幫手
+- 新增學生友善「除錯教練」：指出錯誤位置、解釋原因、給下一步方向，不直接貼整題答案。
+- 可辨識 SyntaxError、IndentationError、NameError、TypeError、ValueError、迴圈逾時，以及 Python 保留字誤作變數名稱。
+- 特別處理 `class = ...`：直接說明 `class` 是保留字，並引導使用「變數英文小幫手」。
+- Python 原始錯誤訊息保留在可展開區，供進階學生查看。
+- 新增「🌐 變數英文小幫手」：輸入中文概念，取得適合的 Python 英文變數名稱。
+- 小幫手只協助命名，不生成整題程式碼；同時教學生小寫、底線、不可數字開頭、不可使用保留字等命名規則。
+
+## v5 學生資料起始頁＋常駐變數英文小幫手
+- Python 冒險開始前，班級、學號為必填；未完成資料設定前不進入正式挑戰。
+- 學生資料目前儲存在 localStorage：`course115_student_profile_v5`。
+- 預留資料庫欄位：`className`, `studentNo`, `courseId`, `createdAt`, `updatedAt`。
+- 頁面上方常駐顯示學生班級與學號，學生可自行修改。
+- 「🌐 變數英文小幫手」改為從第一關開始固定顯示在頁面上方，不需要等到出錯才出現。
+- 每一題仍保留「變數英文小幫手」作為可選求助工具。
+- 目前學生資料不會送到外部服務；等下一階段接 Firebase/Firestore 時再同步到教師資料庫。
