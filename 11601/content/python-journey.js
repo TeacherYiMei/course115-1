@@ -2,7 +2,7 @@ const LEVELS=[{"id": "p1", "icon": "👋", "title": "第 1 關｜哈囉，旅伴
 const TOTAL_CHALLENGES=26;
 
 const KEY="course115_v3_progress", NAMEKEY="course115_v3_name";
-const PROFILE_KEY="course115_student_profile_v5";
+const PROFILE_KEY="course115_student_profile_v5_2";
 let state=JSON.parse(localStorage.getItem(KEY)||"{}"), engine="loading", hintN=0;
 const $=s=>document.querySelector(s);
 const stepsOf=l=>l.steps.length;
@@ -405,14 +405,19 @@ function getStudentProfile(){
   try{return JSON.parse(localStorage.getItem(PROFILE_KEY)||"null")}catch(e){return null}
 }
 function profileIsValid(p){
-  return !!(p && String(p.className||"").trim() && String(p.studentNo||"").trim());
+  return !!(
+    p &&
+    String(p.className||"").trim() &&
+    String(p.seatNo||"").trim() &&
+    String(p.name||"").trim()
+  );
 }
 function updateProfileStrip(){
   const p=getStudentProfile();
   const el=document.getElementById("studentProfileText");
   if(!el) return;
   if(profileIsValid(p)){
-    el.textContent=`班級 ${p.className}　｜　學號 ${p.studentNo}`;
+    el.textContent=`班級 ${p.className}　｜　座號 ${p.seatNo}　｜　姓名 ${p.name}`;
   }else{
     el.textContent="尚未設定";
   }
@@ -420,7 +425,8 @@ function updateProfileStrip(){
 function openProfileDialog(required=true){
   const p=getStudentProfile()||{};
   document.getElementById("profileClass").value=p.className||"";
-  document.getElementById("profileStudentNo").value=p.studentNo||"";
+  document.getElementById("profileSeatNo").value=p.seatNo||"";
+  document.getElementById("profileName").value=p.name||"";
   document.getElementById("profileError").textContent="";
   const dlg=document.getElementById("profileDialog");
   if(required){
@@ -432,17 +438,19 @@ function openProfileDialog(required=true){
 }
 function saveStudentProfile(){
   const className=document.getElementById("profileClass").value.trim();
-  const studentNo=document.getElementById("profileStudentNo").value.trim();
+  const seatNo=document.getElementById("profileSeatNo").value.trim();
+  const name=document.getElementById("profileName").value.trim();
   const err=document.getElementById("profileError");
-  if(!className || !studentNo){
-    err.textContent="班級與學號都要填寫後才能開始挑戰。";
+  if(!className || !seatNo || !name){
+    err.textContent="班級、座號、姓名都要填寫後才能開始挑戰。";
     return;
   }
   const old=getStudentProfile()||{};
   const now=new Date().toISOString();
   const profile={
     className,
-    studentNo,
+    seatNo,
+    name,
     courseId:"python",
     createdAt:old.createdAt||now,
     updatedAt:now

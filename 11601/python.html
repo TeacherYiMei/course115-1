@@ -37,13 +37,16 @@
 <dialog id="profileDialog" class="profileDialog">
   <div class="profileHero">🎒</div>
   <h2>開始 Python 冒險前，先建立你的學習資料</h2>
-  <p>班級與學號會先保存在這台瀏覽器，之後接上教師資料庫時，可用來辨識每位學生的闖關紀錄與證書。</p>
+  <p>班級、座號與姓名會先保存在這台瀏覽器，之後接上教師資料庫時，可用來辨識每位學生的闖關紀錄與證書。</p>
 
   <label class="fieldLabel">班級 <span>*</span></label>
   <input id="profileClass" class="profileInput" placeholder="例如：901" maxlength="20">
 
-  <label class="fieldLabel">學號 <span>*</span></label>
-  <input id="profileStudentNo" class="profileInput" placeholder="例如：15" maxlength="20">
+  <label class="fieldLabel">座號 <span>*</span></label>
+  <input id="profileSeatNo" class="profileInput" placeholder="例如：15" maxlength="10">
+
+  <label class="fieldLabel">姓名 <span>*</span></label>
+  <input id="profileName" class="profileInput" placeholder="例如：王小明" maxlength="20">
 
   <div id="profileError" class="profileError"></div>
 
