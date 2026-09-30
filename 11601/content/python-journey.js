@@ -429,11 +429,7 @@ function openProfileDialog(required=true){
   document.getElementById("profileName").value=p.name||"";
   document.getElementById("profileError").textContent="";
   const dlg=document.getElementById("profileDialog");
-  if(required){
-    dlg.dataset.required="1";
-  }else{
-    dlg.dataset.required="0";
-  }
+  dlg.dataset.required=required?"1":"0";
   dlg.showModal();
 }
 function saveStudentProfile(){
@@ -441,10 +437,12 @@ function saveStudentProfile(){
   const seatNo=document.getElementById("profileSeatNo").value.trim();
   const name=document.getElementById("profileName").value.trim();
   const err=document.getElementById("profileError");
+
   if(!className || !seatNo || !name){
     err.textContent="班級、座號、姓名都要填寫後才能開始挑戰。";
     return;
   }
+
   const old=getStudentProfile()||{};
   const now=new Date().toISOString();
   const profile={
@@ -455,7 +453,9 @@ function saveStudentProfile(){
     createdAt:old.createdAt||now,
     updatedAt:now
   };
+
   localStorage.setItem(PROFILE_KEY,JSON.stringify(profile));
+  localStorage.setItem(NAMEKEY,name);
   updateProfileStrip();
   document.getElementById("profileDialog").close();
 }
@@ -567,7 +567,7 @@ function reward(stationDone,allDone){
   $("#next").onclick=()=>{$("#reward").close();render();if(allDone)openCert()};
 }
 function openCert(){
-  let n=localStorage.getItem(NAMEKEY)||"Python 冒險家";
+  let profile=getStudentProfile(); let n=(profile&&profile.name)||localStorage.getItem(NAMEKEY)||"Python 冒險家";
   $("#certName").textContent=n;
   $("#studentName").value=n==="Python 冒險家"?"":n;
   $("#date").textContent=new Date().toLocaleDateString("zh-TW");
