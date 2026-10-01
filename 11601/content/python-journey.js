@@ -63,6 +63,11 @@ function validate(code,step){
       if(countRx(n,/print\s*\(/g)<2) return fail("題目要求顯示兩行，所以需要 2 次 print()。");
       if(p.length<2 || p.some(x=>x.length<2)) return fail("兩行都要有實際文字內容。");
       if(new Set(p.slice(0,2)).size<2) return fail("兩行內容目前相同；第一行是地點，第二行是活動，請寫成不同內容。");
+      const place=p[0], activity=p[1];
+      if(!looksLikePlace(place))
+        return fail(`第一行「${place}」不像實際地點。請輸入例如「高雄」、「台北」、「東京」等想去的地方。`);
+      if(!looksLikeActivity(activity))
+        return fail(`第二行「${activity}」不像旅行活動。請寫例如「拍照」、「逛夜市」、「看風景」等想做的事情。`);
       return ok();
     }
     case "p2_one_input_var":{
@@ -853,7 +858,19 @@ const PLACE_WORDS=[
   "台北","臺北","新北","桃園","台中","臺中","台南","臺南","高雄","基隆","新竹","苗栗",
   "彰化","南投","雲林","嘉義","屏東","宜蘭","花蓮","台東","臺東","澎湖","金門","馬祖",
   "東京","大阪","京都","北海道","沖繩","首爾","釜山","巴黎","倫敦","紐約","洛杉磯",
-  "新加坡","曼谷","雪梨","墨爾本","香港","澳門","上海","北京","福岡","名古屋","神戶"
+  "新加坡","曼谷","雪梨","墨爾本","香港","澳門","上海","北京","福岡","名古屋","神戶",
+  "Tokyo","Osaka","Kyoto","Seoul","Busan","Paris","London","New York","Singapore","Bangkok",
+  "Sydney","Melbourne","Hong Kong","Macau","Shanghai","Beijing","Taipei","Kaohsiung"
+];
+const ACTIVITY_WORDS=[
+  "拍照","攝影","逛街","逛夜市","購物","吃美食","吃東西","看風景","看夜景","看海","爬山",
+  "登山","散步","騎車","騎腳踏車","游泳","泡溫泉","參觀","遊覽","玩水","搭船","搭纜車",
+  "看展","看電影","唱歌","露營","野餐","滑雪","浮潛","潛水","衝浪","賞花","賞雪","看日出",
+  "看夕陽","逛博物館","逛園區","坐摩天輪","玩遊樂設施","吃小吃","旅遊","旅行"
+];
+const ENGLISH_ACTIVITY_WORDS=[
+  "take photos","take pictures","shopping","swimming","hiking","camping","sightseeing",
+  "eat food","visit museum","visit museums","cycling","skiing","surfing","snorkeling"
 ];
 const OBVIOUS_NON_PLACE=[
   "香蕉","蘋果","西瓜","橘子","芒果","葡萄","便當","雞排","珍珠奶茶","漢堡","薯條",
@@ -863,13 +880,36 @@ const OBVIOUS_NON_PLACE=[
 function cleanAnswer(v){
   return String(v??"").trim();
 }
+function looksLikeGibberish(v){
+  const x=cleanAnswer(v);
+  if(!x) return true;
+  if(/^(.)\1{3,}$/i.test(x)) return true; // ddddd、aaaaa
+  if(/^[A-Za-z]{5,}$/.test(x)){
+    const lower=x.toLowerCase();
+    const vowels=(lower.match(/[aeiou]/g)||[]).length;
+    const knownPlace=PLACE_WORDS.some(w=>String(w).toLowerCase()===lower);
+    const knownActivity=ENGLISH_ACTIVITY_WORDS.some(w=>w===lower);
+    if(!knownPlace&&!knownActivity&&(vowels===0 || vowels/x.length<0.18)) return true;
+  }
+  return false;
+}
 function looksLikePlace(v){
   const x=cleanAnswer(v);
-  if(x.length<2) return false;
+  if(x.length<2 || looksLikeGibberish(x)) return false;
   if(OBVIOUS_NON_PLACE.some(w=>x===w||x.includes(w))) return false;
-  if(PLACE_WORDS.some(w=>x.includes(w))) return true;
-  if(/[市縣區鄉鎮村國島山湖海港站館園機場樂園景區校園]$/.test(x)) return true;
-  if(/^[A-Za-z][A-Za-z .'-]{2,30}$/.test(x)) return true;
+  if(PLACE_WORDS.some(w=>x.toLowerCase().includes(String(w).toLowerCase()))) return true;
+  if(/[市縣區鄉鎮村國島山湖海港站館園機場樂園景區校園夜市老街]$/.test(x)) return true;
+  return false;
+}
+function looksLikeActivity(v){
+  const x=cleanAnswer(v);
+  if(x.length<2 || looksLikeGibberish(x)) return false;
+  if(OBVIOUS_NON_PLACE.some(w=>x===w)) return false;
+  if(ACTIVITY_WORDS.some(w=>x.includes(w))) return true;
+  if(ENGLISH_ACTIVITY_WORDS.some(w=>x.toLowerCase().includes(w))) return true;
+  // 中文活動通常包含動作詞；避免任意名詞或亂碼直接過關。
+  if(/[去看吃玩逛拍買游泳爬登騎搭坐泡參觀賞唱走跑露營滑潛衝]/.test(x) &&
+     /[\u3400-\u9FFF]/.test(x)) return true;
   return false;
 }
 function looksLikePersonName(v){
