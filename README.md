@@ -107,3 +107,8 @@
   - Project ID / Auth Domain
 - 新增「重新連線」按鈕。
 - 不再只顯示泛用的「資料庫連線失敗」。
+
+## v6.3 Firebase API Key 修正
+- 依 Firebase Console 原始 `firebaseConfig` 重新填入設定。
+- 修正先前 apiKey 中將小寫 `l` 誤寫成數字 `1` 的問題。
+- 其餘 projectId、authDomain、storageBucket、messagingSenderId、appId 維持不變。
