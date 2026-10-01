@@ -14,7 +14,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px s
 @media(max-width:700px){.summary{grid-template-columns:repeat(2,1fr)}}
 </style></head>
 <body>
-<header><div><b>👩‍🏫 Python 學習進度｜教師端</b><div class="status">教師端與學生闖關頁分離</div></div><button id="logoutBtn" class="soft hidden">登出</button></header>
+<header><div><b>👩‍🏫 Python 學習進度｜教師端</b><div class="status">教師端與學生闖關頁分離</div><div id="teacherIdentity" class="status"></div></div><button id="logoutBtn" class="soft hidden">登出</button></header>
 <main>
 <section id="loginCard" class="card login">
 <h1>教師登入</h1><p>請使用 Firebase Authentication 中建立的教師帳號。</p>
@@ -24,7 +24,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px s
 </section>
 <section id="dashboard" class="hidden">
 <div class="card">
-<div class="toolbar"><b>班級：</b><select id="classFilter"><option value="">全部班級</option></select>
+<div class="toolbar"><b>授權班級：</b><select id="classFilter"><option value="">全部班級</option></select>
 <button id="refreshBtn" class="soft">重新整理</button><button id="exportBtn" class="export">📗 下載此班 Excel</button><span id="dbStatus" class="status"></span></div>
 <div class="summary"><div class="metric">學生人數<b id="studentCount">0</b></div><div class="metric">平均星星<b id="avgStars">0</b></div><div class="metric">平均評分<b id="avgScore">0</b></div><div class="metric">完成人數<b id="doneCount">0</b></div></div>
 </div>

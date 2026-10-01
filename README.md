@@ -112,3 +112,13 @@
 - 依 Firebase Console 原始 `firebaseConfig` 重新填入設定。
 - 修正先前 apiKey 中將小寫 `l` 誤寫成數字 `1` 的問題。
 - 其餘 projectId、authDomain、storageBucket、messagingSenderId、appId 維持不變。
+
+
+## v7 多教師班級權限版
+- `teachers/{uid}` 支援 `role`, `displayName`, `classes`。
+- `role: teacher` 僅能查看 `classes` 陣列中的班級。
+- `role: admin` 可查看全部班級。
+- 教師端不再先讀取所有學生再前端隱藏，而是依授權班級向 Firestore 查詢。
+- Firestore Rules 同步限制一般教師跨班讀取。
+- Excel 只能匯出登入教師有權限的班級。
+- 新增 `FIREBASE_SETUP.md` 多教師設定教學。
