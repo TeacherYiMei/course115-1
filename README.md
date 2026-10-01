@@ -93,3 +93,8 @@
 - 新增 `firestore.rules` 教師／學生權限控制。
 - 新增班級、座號、姓名格式檢查與明確錯誤提示。
 - 啟用方式請看 `FIREBASE_SETUP.md`。
+
+## v6.1 Firebase Web App 已連結
+- 已填入 `course115-python` 的 Web App firebaseConfig。
+- `enabled` 已改為 `true`。
+- 下一步需在 Firebase Console 開啟 Authentication（Anonymous + Email/Password）及 Firestore。
