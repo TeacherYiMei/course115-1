@@ -60,3 +60,10 @@ dialog{border:0;border-radius:22px;box-shadow:0 30px 90px #1d273d55}dialog::back
 .startAdventureBtn{width:100%;border:0;background:#4f59c7;color:#fff;border-radius:13px;padding:13px;font-weight:900;font-size:16px;cursor:pointer}
 .profileDialog[data-required="1"]::backdrop{background:#1d274890}
 @media(max-width:620px){.tools{flex-direction:column}.topTools{width:100%}.topTools>a,.topTools>button{flex:1;text-align:center}.studentStrip{font-size:13px}}
+
+.fieldError{min-height:18px;color:#b43b3b;font-size:13px;font-weight:800;margin:4px 0 2px}
+.cloudStatus{display:inline-block;margin-left:10px;padding:4px 8px;border-radius:999px;background:#eef1f5;color:#687385;font-size:12px;font-weight:800}
+.cloudStatus.ok{background:#e4f7eb;color:#267148}
+.cloudStatus.error{background:#fff0ea;color:#9a4b36}
+.cloudStatus.syncing{background:#eaf2ff;color:#385f9e}
+.cloudStatus.local{background:#f2f3f5;color:#687385}

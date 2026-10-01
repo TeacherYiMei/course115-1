@@ -2,7 +2,7 @@ const LEVELS=[{"id": "p1", "icon": "👋", "title": "第 1 關｜哈囉，旅伴
 const TOTAL_CHALLENGES=26;
 
 const KEY="course115_v3_progress", NAMEKEY="course115_v3_name";
-const PROFILE_KEY="course115_student_profile_v5_2";
+const PROFILE_KEY="course115_student_profile_v6";
 let state=JSON.parse(localStorage.getItem(KEY)||"{}"), engine="loading", hintN=0;
 const $=s=>document.querySelector(s);
 const stepsOf=l=>l.steps.length;
@@ -18,7 +18,7 @@ function pos(){
   }
   return {i:LEVELS.length,j:0};
 }
-function save(){localStorage.setItem(KEY,JSON.stringify(state))}
+function save(){localStorage.setItem(KEY,JSON.stringify(state));syncCloudProgress()}
 function esc(s){return String(s||"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")}
 function norm(s){return String(s||"").replace(/\s+/g," ").trim()}
 function countRx(code,rx){return (code.match(rx)||[]).length}
@@ -401,69 +401,181 @@ function searchVar(){
   });
 }
 
+
 function getStudentProfile(){
   try{return JSON.parse(localStorage.getItem(PROFILE_KEY)||"null")}catch(e){return null}
 }
-function profileIsValid(p){
-  return !!(
-    p &&
-    String(p.className||"").trim() &&
-    String(p.seatNo||"").trim() &&
-    String(p.name||"").trim()
-  );
+
+function validateStudentProfile(className,seatNo,name){
+  const errors={className:"",seatNo:"",name:""};
+  if(!className) errors.className="請輸入班級。";
+  else if(!/^[1-9][0-9]{2}$/.test(className))
+    errors.className="班級格式請輸入 3 位數字，例如 701、802、901。";
+
+  if(!seatNo) errors.seatNo="請輸入座號。";
+  else if(!/^(?:[1-9]|[1-9][0-9])$/.test(seatNo))
+    errors.seatNo="座號請輸入 1～99 的數字，不要加「號」或前置 0。";
+
+  const cleanName=String(name||"").trim();
+  if(!cleanName) errors.name="請輸入姓名。";
+  else if(cleanName.length<2||cleanName.length>20)
+    errors.name="姓名請輸入 2～20 個字。";
+  else if(!/^[\u3400-\u9FFF A-Za-z·・．'’-]+$/.test(cleanName))
+    errors.name="姓名只能使用中文、英文字母、空格、連字號或間隔點，不要輸入數字與其他符號。";
+
+  return {ok:!errors.className&&!errors.seatNo&&!errors.name,errors};
 }
+
+function profileIsValid(p){
+  if(!p)return false;
+  return validateStudentProfile(
+    String(p.className||"").trim(),
+    String(p.seatNo||"").trim(),
+    String(p.name||"").trim()
+  ).ok;
+}
+
+function showProfileErrors(errors={}){
+  const c=document.getElementById("profileClassError");
+  const s=document.getElementById("profileSeatError");
+  const n=document.getElementById("profileNameError");
+  if(c)c.textContent=errors.className||"";
+  if(s)s.textContent=errors.seatNo||"";
+  if(n)n.textContent=errors.name||"";
+}
+
 function updateProfileStrip(){
   const p=getStudentProfile();
   const el=document.getElementById("studentProfileText");
-  if(!el) return;
-  if(profileIsValid(p)){
-    el.textContent=`班級 ${p.className}　｜　座號 ${p.seatNo}　｜　姓名 ${p.name}`;
-  }else{
-    el.textContent="尚未設定";
-  }
+  if(!el)return;
+  el.textContent=profileIsValid(p)
+    ?`班級 ${p.className}　｜　座號 ${p.seatNo}　｜　姓名 ${p.name}`
+    :"尚未設定";
 }
+
+function updateCloudStatus(text,kind=""){
+  const el=document.getElementById("cloudStatus");
+  if(!el)return;
+  el.textContent=text;
+  el.className="cloudStatus "+kind;
+}
+
 function openProfileDialog(required=true){
   const p=getStudentProfile()||{};
   document.getElementById("profileClass").value=p.className||"";
   document.getElementById("profileSeatNo").value=p.seatNo||"";
   document.getElementById("profileName").value=p.name||"";
   document.getElementById("profileError").textContent="";
+  showProfileErrors({});
   const dlg=document.getElementById("profileDialog");
   dlg.dataset.required=required?"1":"0";
   dlg.showModal();
 }
-function saveStudentProfile(){
+
+function currentProgressInfo(){
+  const p=pos();
+  if(p.i>=LEVELS.length)return {station:"完成",challenge:0};
+  return {station:LEVELS[p.i].title,challenge:p.j+1};
+}
+
+async function syncCloudProgress(){
+  const profile=getStudentProfile();
+  if(!profileIsValid(profile))return;
+  if(!window.CourseDB){updateCloudStatus("💾 僅儲存在本機","local");return;}
+  try{
+    await CourseDB.ready;
+    if(!CourseDB.configured||CourseDB.state==="disabled"){
+      updateCloudStatus("💾 本機模式","local");return;
+    }
+    if(CourseDB.state!=="ready"){
+      updateCloudStatus("⚠️ 資料庫連線失敗","error");return;
+    }
+    updateCloudStatus("☁️ 同步中…","syncing");
+    const cur=currentProgressInfo();
+    await CourseDB.saveStudent({
+      ...profile,
+      progress:state,
+      stars:total(),
+      totalStars:TOTAL_CHALLENGES,
+      completed:total()>=TOTAL_CHALLENGES,
+      currentStation:cur.station,
+      currentChallenge:cur.challenge
+    });
+    updateCloudStatus("☁️ 已同步教師資料庫","ok");
+  }catch(e){
+    updateCloudStatus("⚠️ 同步失敗，已保留本機進度","error");
+  }
+}
+
+async function saveStudentProfile(){
   const className=document.getElementById("profileClass").value.trim();
   const seatNo=document.getElementById("profileSeatNo").value.trim();
   const name=document.getElementById("profileName").value.trim();
   const err=document.getElementById("profileError");
-
-  if(!className || !seatNo || !name){
-    err.textContent="班級、座號、姓名都要填寫後才能開始挑戰。";
+  const check=validateStudentProfile(className,seatNo,name);
+  showProfileErrors(check.errors);
+  if(!check.ok){
+    err.textContent="請先修正上方欄位，再開始挑戰。";
     return;
   }
-
+  err.textContent="";
   const old=getStudentProfile()||{};
   const now=new Date().toISOString();
   const profile={
-    className,
-    seatNo,
-    name,
-    courseId:"python",
-    createdAt:old.createdAt||now,
-    updatedAt:now
+    className,seatNo,name,courseId:"python",
+    createdAt:old.createdAt||now,updatedAt:now
   };
-
   localStorage.setItem(PROFILE_KEY,JSON.stringify(profile));
   localStorage.setItem(NAMEKEY,name);
   updateProfileStrip();
   document.getElementById("profileDialog").close();
+  await syncCloudProgress();
 }
+
 function ensureStudentProfile(){
   updateProfileStrip();
-  const p=getStudentProfile();
-  if(!profileIsValid(p)){
-    openProfileDialog(true);
+  if(!profileIsValid(getStudentProfile()))openProfileDialog(true);
+}
+
+async function restoreCloudState(){
+  updateProfileStrip();
+  if(!window.CourseDB){
+    updateCloudStatus("💾 本機模式","local");ensureStudentProfile();return;
+  }
+  try{
+    await CourseDB.ready;
+    if(!CourseDB.configured||CourseDB.state==="disabled"){
+      updateCloudStatus("💾 本機模式","local");ensureStudentProfile();return;
+    }
+    if(CourseDB.state!=="ready"){
+      updateCloudStatus("⚠️ 資料庫連線失敗","error");ensureStudentProfile();return;
+    }
+    const remote=await CourseDB.loadStudent();
+    if(remote){
+      const localProfile=getStudentProfile();
+      if(!profileIsValid(localProfile)&&remote.className&&remote.seatNo&&remote.name){
+        const restored={
+          className:String(remote.className),seatNo:String(remote.seatNo),name:String(remote.name),
+          courseId:"python",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()
+        };
+        if(profileIsValid(restored)){
+          localStorage.setItem(PROFILE_KEY,JSON.stringify(restored));
+          localStorage.setItem(NAMEKEY,restored.name);
+        }
+      }
+      if(remote.progress&&Number(remote.stars||0)>total()){
+        state=remote.progress;
+        localStorage.setItem(KEY,JSON.stringify(state));
+        render();
+      }
+    }
+    updateProfileStrip();
+    updateCloudStatus("☁️ 已連接教師資料庫","ok");
+    ensureStudentProfile();
+    if(profileIsValid(getStudentProfile()))await syncCloudProgress();
+  }catch(e){
+    updateCloudStatus("⚠️ 資料庫連線失敗，使用本機進度","error");
+    ensureStudentProfile();
   }
 }
 if(window.PYRUN){
@@ -580,4 +692,4 @@ $("#applyName").onclick=()=>{
 };
 $("#printCert").onclick=()=>window.print();
 render();
-ensureStudentProfile();
+restoreCloudState();

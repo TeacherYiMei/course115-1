@@ -23,6 +23,7 @@
     <div>
       <span class="studentLabel">👤 學生資料</span>
       <span id="studentProfileText">尚未設定</span>
+      <span id="cloudStatus" class="cloudStatus">☁️ 檢查資料庫中</span>
     </div>
     <button id="editProfileBtn" class="profileBtn">修改</button>
   </section>
@@ -40,18 +41,21 @@
   <p>班級、座號與姓名會先保存在這台瀏覽器，之後接上教師資料庫時，可用來辨識每位學生的闖關紀錄與證書。</p>
 
   <label class="fieldLabel">班級 <span>*</span></label>
-  <input id="profileClass" class="profileInput" placeholder="例如：901" maxlength="20">
+  <input id="profileClass" class="profileInput" placeholder="例如：901" maxlength="3" inputmode="numeric">
+  <div id="profileClassError" class="fieldError"></div>
 
   <label class="fieldLabel">座號 <span>*</span></label>
-  <input id="profileSeatNo" class="profileInput" placeholder="例如：15" maxlength="10">
+  <input id="profileSeatNo" class="profileInput" placeholder="例如：15" maxlength="2" inputmode="numeric">
+  <div id="profileSeatError" class="fieldError"></div>
 
   <label class="fieldLabel">姓名 <span>*</span></label>
   <input id="profileName" class="profileInput" placeholder="例如：王小明" maxlength="20">
+  <div id="profileNameError" class="fieldError"></div>
 
   <div id="profileError" class="profileError"></div>
 
   <div class="profilePrivacy">
-    🔒 目前只儲存在這個瀏覽器中，尚未傳送到外部資料庫。
+    🔒 連接資料庫後，闖關進度會同步到教師端；未連接時仍會保存在這台瀏覽器。
   </div>
 
   <button id="saveProfileBtn" class="startAdventureBtn">🚀 儲存並開始挑戰</button>
@@ -90,6 +94,8 @@
 
 <script src="config.js"></script>
 <script src="../shared/pyrunner.js"></script>
+<script src="../shared/firebase-config.js"></script>
+<script src="../shared/firebase-sync.js"></script>
 <script src="content/python-journey.js"></script>
 <script>
 document.getElementById("closeVar").onclick=()=>document.getElementById("varDialog").close();

@@ -81,3 +81,15 @@
 - 強制重建開始挑戰前的學生資料表單，確認顯示：班級、座號、姓名。
 - 三欄皆為必填。
 - 姓名同步存入證書名稱，完成課程後證書可直接帶入學生姓名。
+
+
+## v6 資料庫＋教師進度版
+- Firebase Anonymous Authentication + Cloud Firestore 學生進度同步。
+- localStorage 與雲端雙重保存。
+- 新增 `teacher.html` 教師端，以 Email/Password 登入。
+- 教師端可依班級查看班級、座號、姓名、星星、評分、目前進度、完成狀態。
+- 星星自動換算 100 分：`round(stars / totalStars * 100)`。
+- 可依班級下載 `.xlsx` Excel。
+- 新增 `firestore.rules` 教師／學生權限控制。
+- 新增班級、座號、姓名格式檢查與明確錯誤提示。
+- 啟用方式請看 `FIREBASE_SETUP.md`。
