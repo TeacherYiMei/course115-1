@@ -478,6 +478,44 @@ function currentProgressInfo(){
   return {station:LEVELS[p.i].title,challenge:p.j+1};
 }
 
+
+function firebaseDiagnosticHTML(){
+  if(!window.CourseDB){
+    return `<div class="diagBox"><b>狀態：</b>CourseDB 尚未載入。</div>`;
+  }
+  const d=CourseDB.diagnostic?CourseDB.diagnostic():{};
+  return `<div class="diagBox">
+    <div><b>狀態：</b>${esc(d.state||"")}</div>
+    <div><b>階段：</b>${esc(d.stage||"")}</div>
+    <div><b>錯誤碼：</b><code>${esc(d.errorCode||"（沒有錯誤碼）")}</code></div>
+    <div><b>錯誤訊息：</b><div class="diagMessage">${esc(d.errorMessage||"（沒有錯誤訊息）")}</div></div>
+    <div><b>Project ID：</b><code>${esc(d.projectId||"")}</code></div>
+    <div><b>Auth Domain：</b><code>${esc(d.authDomain||"")}</code></div>
+  </div>
+  <p class="diagNote">請把這個畫面截圖傳給老師／開發者，就能直接判斷是哪一步失敗。</p>`;
+}
+function openFirebaseDiagnostic(){
+  document.getElementById("firebaseDiagBody").innerHTML=firebaseDiagnosticHTML();
+  document.getElementById("firebaseDiagDialog").showModal();
+}
+async function retryFirebaseConnection(){
+  const btn=document.getElementById("retryFirebaseBtn");
+  btn.disabled=true;btn.textContent="重新連線中…";
+  try{
+    if(window.CourseDB&&CourseDB.reconnect){
+      await CourseDB.reconnect();
+      document.getElementById("firebaseDiagBody").innerHTML=firebaseDiagnosticHTML();
+      if(CourseDB.state==="ready"){
+        updateCloudStatus("☁️ 已連接教師資料庫","ok");
+        await syncCloudProgress();
+      }else{
+        updateCloudStatus("⚠️ 資料庫連線失敗（點此查看原因）","error");
+      }
+    }
+  }finally{
+    btn.disabled=false;btn.textContent="重新連線";
+  }
+}
 async function syncCloudProgress(){
   const profile=getStudentProfile();
   if(!profileIsValid(profile))return;
@@ -488,7 +526,7 @@ async function syncCloudProgress(){
       updateCloudStatus("💾 本機模式","local");return;
     }
     if(CourseDB.state!=="ready"){
-      updateCloudStatus("⚠️ 資料庫連線失敗","error");return;
+      updateCloudStatus("⚠️ 資料庫連線失敗（點此查看原因）","error");return;
     }
     updateCloudStatus("☁️ 同步中…","syncing");
     const cur=currentProgressInfo();
@@ -503,7 +541,7 @@ async function syncCloudProgress(){
     });
     updateCloudStatus("☁️ 已同步教師資料庫","ok");
   }catch(e){
-    updateCloudStatus("⚠️ 同步失敗，已保留本機進度","error");
+    updateCloudStatus("⚠️ 同步失敗（點此查看原因）","error");
   }
 }
 
@@ -548,7 +586,7 @@ async function restoreCloudState(){
       updateCloudStatus("💾 本機模式","local");ensureStudentProfile();return;
     }
     if(CourseDB.state!=="ready"){
-      updateCloudStatus("⚠️ 資料庫連線失敗","error");ensureStudentProfile();return;
+      updateCloudStatus("⚠️ 資料庫連線失敗（點此查看原因）","error");ensureStudentProfile();return;
     }
     const remote=await CourseDB.loadStudent();
     if(remote){
@@ -574,7 +612,7 @@ async function restoreCloudState(){
     ensureStudentProfile();
     if(profileIsValid(getStudentProfile()))await syncCloudProgress();
   }catch(e){
-    updateCloudStatus("⚠️ 資料庫連線失敗，使用本機進度","error");
+    updateCloudStatus("⚠️ 資料庫連線失敗（點此查看原因）","error");
     ensureStudentProfile();
   }
 }

@@ -67,3 +67,10 @@ dialog{border:0;border-radius:22px;box-shadow:0 30px 90px #1d273d55}dialog::back
 .cloudStatus.error{background:#fff0ea;color:#9a4b36}
 .cloudStatus.syncing{background:#eaf2ff;color:#385f9e}
 .cloudStatus.local{background:#f2f3f5;color:#687385}
+
+.cloudButton{border:0;cursor:pointer}
+.firebaseDiagDialog{width:min(680px,94vw);padding:26px}
+.diagBox{background:#f4f6f9;border-radius:14px;padding:15px;line-height:1.8}
+.diagBox code{background:#e8ebef;padding:2px 6px;border-radius:6px}
+.diagMessage{white-space:pre-wrap;word-break:break-word;background:#fff;border-radius:9px;padding:9px;margin-top:4px}
+.diagNote{color:#687385;font-size:13px}

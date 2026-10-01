@@ -98,3 +98,12 @@
 - 已填入 `course115-python` 的 Web App firebaseConfig。
 - `enabled` 已改為 `true`。
 - 下一步需在 Firebase Console 開啟 Authentication（Anonymous + Email/Password）及 Firestore。
+
+## v6.2 Firebase 診斷版
+- 資料庫連線失敗時，可直接點上方狀態查看：
+  - 失敗階段
+  - Firebase 錯誤碼
+  - Firebase 原始錯誤訊息
+  - Project ID / Auth Domain
+- 新增「重新連線」按鈕。
+- 不再只顯示泛用的「資料庫連線失敗」。

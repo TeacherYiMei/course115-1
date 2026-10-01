@@ -23,7 +23,7 @@
     <div>
       <span class="studentLabel">👤 學生資料</span>
       <span id="studentProfileText">尚未設定</span>
-      <span id="cloudStatus" class="cloudStatus">☁️ 檢查資料庫中</span>
+      <button id="cloudStatus" class="cloudStatus cloudButton" type="button">☁️ 檢查資料庫中</button>
     </div>
     <button id="editProfileBtn" class="profileBtn">修改</button>
   </section>
@@ -34,6 +34,14 @@
 <dialog id="reward"><div id="rewardBody"></div></dialog>
 
 
+
+
+<dialog id="firebaseDiagDialog" class="firebaseDiagDialog">
+  <button id="closeFirebaseDiag" class="close">×</button>
+  <h2>☁️ Firebase 連線診斷</h2>
+  <div id="firebaseDiagBody"></div>
+  <button id="retryFirebaseBtn" class="startAdventureBtn">重新連線</button>
+</dialog>
 
 <dialog id="profileDialog" class="profileDialog">
   <div class="profileHero">🎒</div>
@@ -104,4 +112,7 @@ document.getElementById("varQuery").addEventListener("keydown",e=>{if(e.key==="E
 document.getElementById("persistentVarBtn").onclick=openVarHelper;
 document.getElementById("editProfileBtn").onclick=()=>openProfileDialog(false);
 document.getElementById("saveProfileBtn").onclick=saveStudentProfile;
+document.getElementById("cloudStatus").onclick=openFirebaseDiagnostic;
+document.getElementById("closeFirebaseDiag").onclick=()=>document.getElementById("firebaseDiagDialog").close();
+document.getElementById("retryFirebaseBtn").onclick=retryFirebaseConnection;
 </script></body></html>
