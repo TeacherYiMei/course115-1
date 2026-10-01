@@ -655,57 +655,174 @@ function render(){
     ${criteria}
     <div class="editorLabel">⌨️ ${label}</div>
     <textarea id="code" class="editor" spellcheck="false">${esc(s.starter)}</textarea>
+    <div class="actions primaryActions">
+      <button id="tryRun" class="run tryRun" ${engine==="loading"?"disabled":""}>${engine==="ready"?"▶ 執行看看":"⏳ Python 準備中…"}</button>
+      <button id="checkChallenge" class="checkChallenge" ${engine==="loading"?"disabled":""}>✅ 檢查挑戰</button>
+    </div>
     <div class="actions">
-      <button id="run" class="run" ${engine==="loading"?"disabled":""}>${engine==="ready"?"▶ 開始挑戰":"⏳ Python 準備中…"}</button>
       <button id="hintBtn" class="help">💡 我需要線索</button><button id="varBtn" class="translate">🌐 變數英文小幫手</button>
       <a class="book" href="python-guide.html#${s.ref}" target="_blank">📘 我想查指令</a>
     </div>
-    <pre id="out" class="output">先自己完成；需要時再使用線索或指令小百科。</pre>
+    <div class="runNote">「執行看看」只看自己的程式結果，不會判定闖關；覺得完成後再按「檢查挑戰」。</div>
+    <div class="consoleLabel">🖥️ 執行結果</div>
+    <pre id="out" class="output">按「▶ 執行看看」看看你的程式會輸出什麼。</pre>
+    <div id="runInputArea" class="runInputArea" aria-live="polite"></div>
+    <div class="consoleActions"><button id="clearOutput" type="button" class="clearOutput">🧹 清除結果</button></div>
     <div id="hint"></div><div id="fb"></div>
   </article>`;
-  $("#run").onclick=()=>run(l,p.j,s);
+  $("#tryRun").onclick=()=>tryRunOnly();
+  $("#checkChallenge").onclick=()=>checkChallenge(l,p.j,s);
+  $("#clearOutput").onclick=()=>{
+    $("#out").textContent="執行結果已清除。";
+    $("#runInputArea").innerHTML="";
+    $("#fb").innerHTML="";
+  };
   $("#hintBtn").onclick=()=>showHint(s); $("#varBtn").onclick=openVarHelper;
 }
 function showHint(s){
   hintN=Math.min(hintN+1,s.hints.length);
   $("#hint").innerHTML=`<div class="hint"><b>💡 線索 ${hintN}/${s.hints.length}</b><br>${s.hints[hintN-1]}${hintN<s.hints.length?"<br><small>還需要時，可以再按一次。</small>":""}</div>`;
 }
-async function execute(c){
-  if(!window.PYRUN||engine!=="ready") throw Error("ENGINE");
-  let r=await PYRUN.run(c,[],{timeout:3000});
-  if(r.error){
-    let x=PYRUN.explain(r.error,c);
-    throw Error(x?.tip||r.error.msg||"程式有錯");
-  }
-  return PYRUN.transcript(r.events,true);
+function askInlineInput(promptText, partialText){
+  return new Promise(resolve=>{
+    const area=$("#runInputArea");
+    const out=$("#out");
+    if(out && partialText!==undefined){
+      out.textContent=partialText||"程式正在等待輸入…";
+    }
+    if(!area){ resolve(null); return; }
+
+    area.innerHTML=`
+      <div class="inputPrompt">
+        <div class="inputPromptText">⌨️ ${esc(promptText||"請輸入資料：")}</div>
+        <form id="runtimeInputForm" class="runtimeInputForm">
+          <input id="runtimeInput" class="runtimeInput" autocomplete="off"
+                 aria-label="${esc(promptText||"請輸入資料")}" placeholder="在這裡輸入…" />
+          <button type="submit" class="sendInput">送出</button>
+          <button type="button" id="cancelRuntimeInput" class="cancelInput">取消執行</button>
+        </form>
+      </div>`;
+
+    const form=$("#runtimeInputForm");
+    const input=$("#runtimeInput");
+    const cancel=$("#cancelRuntimeInput");
+    input.focus();
+
+    form.addEventListener("submit",e=>{
+      e.preventDefault();
+      const value=input.value;
+      area.innerHTML=`<div class="inputHistory">↳ 你輸入：<b>${esc(value)}</b></div>`;
+      resolve(value);
+    },{once:true});
+
+    cancel.addEventListener("click",()=>{
+      area.innerHTML="";
+      resolve(null);
+    },{once:true});
+  });
 }
-async function run(l,j,s){
-  let b=$("#run"),o=$("#out"),f=$("#fb"),c=$("#code").value;
-  b.disabled=true;b.textContent="🐍 挑戰中…";f.innerHTML="";
+
+async function executeInteractive(c){
+  if(!window.PYRUN||engine!=="ready") throw Error("ENGINE");
+  const inputs=[];
+  let rounds=0;
+  const area=$("#runInputArea");
+  if(area) area.innerHTML="";
+
+  while(rounds<30){
+    rounds++;
+    let r=await PYRUN.run(c,inputs,{timeout:3000});
+    if(r.error){
+      let x=PYRUN.explain(r.error,c);
+      throw Error(x?.tip||r.error.msg||"程式有錯");
+    }
+
+    const partial=PYRUN.transcript(r.events,true);
+    if(!r.need){
+      if(area) area.innerHTML="";
+      return partial;
+    }
+
+    let promptText="請輸入資料：";
+    const evs=r.events||[];
+    for(let i=evs.length-1;i>=0;i--){
+      if(evs[i][0]==="prompt"){
+        promptText=evs[i][1]||promptText;
+        break;
+      }
+    }
+
+    const value=await askInlineInput(promptText,partial);
+    if(value===null){
+      const cancelErr=new Error("INPUT_CANCELLED");
+      throw cancelErr;
+    }
+    inputs.push(value);
+  }
+  throw Error("輸入次數太多，請檢查迴圈是否會正常結束。");
+}
+
+function showRunError(e,c,o,f){
+  const area=$("#runInputArea");
+  if(area && e.message!=="INPUT_CANCELLED") area.innerHTML="";
+  if(e.message==="INPUT_CANCELLED"){
+    o.textContent="已取消這次執行。";
+    f.innerHTML='<div class="feedback wait">你可以修改程式後再按「執行看看」。</div>';
+  }else if(e.message==="ENGINE"){
+    o.textContent="⚠️ Python 尚未準備完成。";
+    f.innerHTML='<div class="feedback wait">這不是你的程式錯誤，請稍後再試或重新整理。</div>';
+  }else{
+    const info=debugCoach(e.message,c);
+    o.textContent="程式目前還不能正常執行。";
+    f.innerHTML=coachHTML(info)+`<details class="rawError"><summary>🔧 查看 Python 原始錯誤訊息</summary><pre>${esc(e.message)}</pre></details>`;
+  }
+}
+
+async function tryRunOnly(){
+  const b=$("#tryRun"),checkBtn=$("#checkChallenge"),o=$("#out"),f=$("#fb"),c=$("#code").value;
+  b.disabled=true;
+  checkBtn.disabled=true;
+  b.textContent="🐍 執行中…";
+  f.innerHTML="";
   try{
-    let t=await execute(c);
-    o.textContent=t||"程式執行完成。";
+    const t=await executeInteractive(c);
+    o.textContent=t||"程式執行完成，但目前沒有輸出內容。";
+    f.innerHTML='<div class="feedback runOnly">👀 這是你這次程式的執行結果。可以繼續修改、再執行；準備好後再按「✅ 檢查挑戰」。</div>';
+  }catch(e){
+    showRunError(e,c,o,f);
+  }finally{
+    b.disabled=engine==="loading";
+    checkBtn.disabled=engine==="loading";
+    b.textContent=engine==="ready"?"▶ 再執行一次":"⏳ Python 準備中…";
+  }
+}
+
+async function checkChallenge(l,j,s){
+  const b=$("#checkChallenge"),runBtn=$("#tryRun"),o=$("#out"),f=$("#fb"),c=$("#code").value;
+  b.disabled=true;
+  runBtn.disabled=true;
+  b.textContent="🔎 檢查中…";
+  f.innerHTML="";
+  try{
+    const t=await executeInteractive(c);
+    o.textContent=t||"程式執行完成，但目前沒有輸出內容。";
+
     let check=validate(c,s);
     if(!check.ok){
-      f.innerHTML=`<div class="feedback wait">🔎 ${check.msg}<br><small>這就是目前還沒完成的條件。你可以先自己修改，需要時再使用求助工具。</small></div>`;
+      f.innerHTML=`<div class="feedback wait">🔎 ${check.msg}<br><small>這就是目前還沒完成的條件。你可以先修改，再用「執行看看」測試。</small></div>`;
       return;
     }
+
     if(done(l.id)<j+1){state[l.id]=j+1;save()}
     let stationDone=(j+1===stepsOf(l));
     let allDone=(pos().i>=LEVELS.length);
     reward(stationDone,allDone);
   }catch(e){
-    if(e.message==="ENGINE"){
-      o.textContent="⚠️ Python 尚未準備完成。";
-      f.innerHTML='<div class="feedback wait">這不是你的程式錯誤，請稍後再試或重新整理。</div>';
-    }else{
-      const info=debugCoach(e.message,c);
-      o.textContent="程式目前還不能正常執行。";
-      f.innerHTML=coachHTML(info)+`<details class="rawError"><summary>🔧 查看 Python 原始錯誤訊息</summary><pre>${esc(e.message)}</pre></details>`;
-    }
+    showRunError(e,c,o,f);
   }finally{
     b.disabled=engine==="loading";
-    b.textContent=engine==="ready"?"▶ 再挑戰一次":"⏳ Python 準備中…";
+    runBtn.disabled=engine==="loading";
+    b.textContent="✅ 檢查挑戰";
   }
 }
 function reward(stationDone,allDone){

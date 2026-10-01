@@ -74,3 +74,124 @@ dialog{border:0;border-radius:22px;box-shadow:0 30px 90px #1d273d55}dialog::back
 .diagBox code{background:#e8ebef;padding:2px 6px;border-radius:6px}
 .diagMessage{white-space:pre-wrap;word-break:break-word;background:#fff;border-radius:9px;padding:9px;margin-top:4px}
 .diagNote{color:#687385;font-size:13px}
+
+
+/* v8：將自由執行與闖關檢查分開 */
+.primaryActions{
+  margin-bottom:.45rem;
+}
+.primaryActions .tryRun,
+.primaryActions .checkChallenge{
+  min-height:48px;
+  font-weight:800;
+}
+.checkChallenge{
+  border:2px solid var(--ink,#24324a);
+  background:#fff;
+  color:var(--ink,#24324a);
+  border-radius:14px;
+  padding:.75rem 1rem;
+  cursor:pointer;
+}
+.checkChallenge:disabled{
+  opacity:.55;
+  cursor:not-allowed;
+}
+.runNote{
+  margin:.55rem 0 .65rem;
+  padding:.65rem .8rem;
+  border-radius:12px;
+  background:#f5f7fb;
+  color:#536074;
+  font-size:.92rem;
+  line-height:1.5;
+}
+.feedback.runOnly{
+  border-left:4px solid #667085;
+  background:#f7f8fa;
+}
+@media (max-width:640px){
+  .primaryActions{
+    display:grid;
+    grid-template-columns:1fr;
+  }
+  .primaryActions .tryRun,
+  .primaryActions .checkChallenge{
+    width:100%;
+  }
+}
+
+
+/* v9：頁面內互動執行主控台 */
+.consoleLabel{
+  margin-top:.75rem;
+  font-weight:800;
+  color:#344054;
+}
+.runInputArea{
+  margin-top:.55rem;
+}
+.inputPrompt{
+  padding:.8rem;
+  border:1px solid #d0d5dd;
+  border-radius:14px;
+  background:#fff;
+}
+.inputPromptText{
+  margin-bottom:.55rem;
+  font-weight:700;
+  color:#344054;
+}
+.runtimeInputForm{
+  display:flex;
+  gap:.5rem;
+  flex-wrap:wrap;
+}
+.runtimeInput{
+  flex:1 1 220px;
+  min-width:0;
+  min-height:44px;
+  padding:.65rem .75rem;
+  border:1px solid #98a2b3;
+  border-radius:10px;
+  font-size:16px;
+}
+.sendInput,.cancelInput,.clearOutput{
+  min-height:44px;
+  border-radius:10px;
+  padding:.6rem .85rem;
+  font-weight:700;
+  cursor:pointer;
+}
+.sendInput{
+  border:0;
+  background:#344054;
+  color:#fff;
+}
+.cancelInput,.clearOutput{
+  border:1px solid #d0d5dd;
+  background:#fff;
+  color:#475467;
+}
+.inputHistory{
+  padding:.55rem .7rem;
+  border-radius:10px;
+  background:#f2f4f7;
+  color:#475467;
+  font-size:.92rem;
+}
+.consoleActions{
+  margin-top:.45rem;
+  display:flex;
+  justify-content:flex-end;
+}
+@media (max-width:640px){
+  .runtimeInputForm{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+  }
+  .runtimeInput{
+    grid-column:1 / -1;
+    width:100%;
+  }
+}
