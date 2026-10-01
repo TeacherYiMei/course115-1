@@ -227,3 +227,11 @@ dialog{border:0;border-radius:22px;box-shadow:0 30px 90px #1d273d55}dialog::back
   .studentStripActions{width:100%}
   .studentStripActions .profileBtn{flex:1}
 }
+
+
+/* v11：題意與輸入內容檢查 */
+.feedback.meaning{
+  border-left:4px solid #8a6d3b;
+  background:#fff8e8;
+  color:#5f4a25;
+}

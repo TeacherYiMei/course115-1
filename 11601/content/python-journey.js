@@ -848,6 +848,144 @@ function showHint(s){
   hintN=Math.min(hintN+1,s.hints.length);
   $("#hint").innerHTML=`<div class="hint"><b>💡 線索 ${hintN}/${s.hints.length}</b><br>${s.hints[hintN-1]}${hintN<s.hints.length?"<br><small>還需要時，可以再按一次。</small>":""}</div>`;
 }
+
+const PLACE_WORDS=[
+  "台北","臺北","新北","桃園","台中","臺中","台南","臺南","高雄","基隆","新竹","苗栗",
+  "彰化","南投","雲林","嘉義","屏東","宜蘭","花蓮","台東","臺東","澎湖","金門","馬祖",
+  "東京","大阪","京都","北海道","沖繩","首爾","釜山","巴黎","倫敦","紐約","洛杉磯",
+  "新加坡","曼谷","雪梨","墨爾本","香港","澳門","上海","北京","福岡","名古屋","神戶"
+];
+const OBVIOUS_NON_PLACE=[
+  "香蕉","蘋果","西瓜","橘子","芒果","葡萄","便當","雞排","珍珠奶茶","漢堡","薯條",
+  "鉛筆","橡皮擦","桌子","椅子","手機","電腦","作業","數學","英文","哈哈","不知道","隨便"
+];
+
+function cleanAnswer(v){
+  return String(v??"").trim();
+}
+function looksLikePlace(v){
+  const x=cleanAnswer(v);
+  if(x.length<2) return false;
+  if(OBVIOUS_NON_PLACE.some(w=>x===w||x.includes(w))) return false;
+  if(PLACE_WORDS.some(w=>x.includes(w))) return true;
+  if(/[市縣區鄉鎮村國島山湖海港站館園機場樂園景區校園]$/.test(x)) return true;
+  if(/^[A-Za-z][A-Za-z .'-]{2,30}$/.test(x)) return true;
+  return false;
+}
+function looksLikePersonName(v){
+  const x=cleanAnswer(v);
+  return x.length>=2 && x.length<=20 &&
+    /^[\u3400-\u9FFF A-Za-z·・．'’-]+$/.test(x) &&
+    !OBVIOUS_NON_PLACE.includes(x);
+}
+function validNumber(v,min,max,integer=true){
+  const x=cleanAnswer(v);
+  if(x==="")return false;
+  const n=Number(x);
+  if(!Number.isFinite(n))return false;
+  if(integer&&!Number.isInteger(n))return false;
+  return n>=min&&n<=max;
+}
+function interactionValue(interactions,keywords,fallbackIndex){
+  for(const it of interactions||[]){
+    const p=String(it.prompt||"");
+    if(keywords.some(k=>p.includes(k))) return cleanAnswer(it.value);
+  }
+  return cleanAnswer(interactions?.[fallbackIndex]?.value);
+}
+function semanticValidate(rule,interactions){
+  if(!Array.isArray(interactions)||!interactions.length) return ok();
+
+  if(rule==="p2_one_input_var"){
+    const city=interactionValue(interactions,["城市","地點","目的地"],0);
+    if(!looksLikePlace(city))
+      return fail(`「${city||"空白"}」不像實際的城市或地點。請輸入例如「高雄」、「台北」、「東京」等地點。`);
+  }
+
+  if(rule==="p2_two_inputs"){
+    const name=interactionValue(interactions,["姓名","名字"],0);
+    const cls=interactionValue(interactions,["班級"],1);
+    if(!looksLikePersonName(name))
+      return fail("姓名欄請輸入合理的姓名文字，不要用食物、數字或無關內容代替。");
+    if(!/^[1-9][0-9]{2}$/.test(cls))
+      return fail("班級請輸入 3 位數，例如 701、802、910。");
+  }
+
+  if(rule==="p2_three_inputs_print"){
+    const destination=interactionValue(interactions,["目的地","城市","地點"],0);
+    const days=interactionValue(interactions,["天數","幾天"],1);
+    const activity=interactionValue(interactions,["活動","期待"],2);
+    if(!looksLikePlace(destination))
+      return fail(`目的地「${destination||"空白"}」不像實際地點。請輸入真實城市或旅遊地點。`);
+    if(!validNumber(days,1,30,true))
+      return fail("旅行天數請輸入 1～30 的整數。");
+    if(activity.length<2 || /^(不知道|隨便|無|沒有|123|abc)$/i.test(activity))
+      return fail("「最期待的活動」請輸入有意義的活動內容，例如參觀、拍照、逛夜市等。");
+  }
+
+  if(rule==="p3_multiply_int"){
+    const price=interactionValue(interactions,["票價","單張","價格"],0);
+    const count=interactionValue(interactions,["張數","幾張","數量"],1);
+    if(!validNumber(price,1,100000,true)) return fail("單張票價要輸入大於 0 的整數。");
+    if(!validNumber(count,1,1000,true)) return fail("張數要輸入大於 0 的整數。");
+  }
+
+  if(rule==="p3_divmod"){
+    const total=interactionValue(interactions,["總數","點心"],0);
+    const people=interactionValue(interactions,["人數","幾人"],1);
+    if(!validNumber(total,0,100000,true)) return fail("點心總數請輸入 0 以上的整數。");
+    if(!validNumber(people,1,10000,true)) return fail("人數必須是大於 0 的整數。");
+  }
+
+  if(rule==="p3_budget"){
+    for(const [idx,label] of [["總預算",0],["交通費",1],["餐費",2]]){
+      const v=interactionValue(interactions,[idx],label);
+      if(!validNumber(v,0,10000000,true)) return fail(`${idx}請輸入 0 以上的整數。`);
+    }
+  }
+
+  if(rule==="p4_square"){
+    const side=interactionValue(interactions,["邊長","長度"],0);
+    if(!validNumber(side,0.01,100000,false)) return fail("邊長要輸入大於 0 的數字。");
+  }
+
+  if(rule==="p4_speed"){
+    const distance=interactionValue(interactions,["距離"],0);
+    const time=interactionValue(interactions,["時間","小時"],1);
+    if(!validNumber(distance,0,1000000,false)) return fail("距離請輸入 0 以上的數字。");
+    if(!validNumber(time,0.01,100000,false)) return fail("時間必須大於 0，否則無法計算平均速度。");
+  }
+
+  if(rule==="p5_pass"){
+    const score=interactionValue(interactions,["分數","成績"],0);
+    if(!validNumber(score,0,100,true)) return fail("分數請輸入 0～100 的整數。");
+  }
+
+  if(rule==="p5_rain"){
+    const rain=interactionValue(interactions,["降雨","機率"],0);
+    if(!validNumber(rain,0,100,true)) return fail("降雨機率請輸入 0～100 的整數。");
+  }
+
+  if(rule==="p6_age3"){
+    const age=interactionValue(interactions,["年齡","歲"],0);
+    if(!validNumber(age,0,120,true)) return fail("年齡請輸入 0～120 的整數。");
+  }
+
+  if(rule==="p6_temp4"){
+    const temp=interactionValue(interactions,["氣溫","溫度"],0);
+    if(!validNumber(temp,-50,60,true)) return fail("氣溫請輸入合理範圍內的整數，例如 -10～40。");
+  }
+
+  if(rule==="p7_and"||rule==="p7_or"){
+    for(let i=0;i<Math.min(2,interactions.length);i++){
+      const v=cleanAnswer(interactions[i].value);
+      if(v!=="0"&&v!=="1") return fail("這一題指定使用 1／0 回答，請只輸入 1 或 0。");
+    }
+  }
+
+  return ok();
+}
+
 function askInlineInput(promptText, partialText){
   return new Promise(resolve=>{
     const area=$("#runInputArea");
@@ -890,6 +1028,7 @@ function askInlineInput(promptText, partialText){
 async function executeInteractive(c){
   if(!window.PYRUN||engine!=="ready") throw Error("ENGINE");
   const inputs=[];
+  const interactions=[];
   let rounds=0;
   const area=$("#runInputArea");
   if(area) area.innerHTML="";
@@ -905,7 +1044,7 @@ async function executeInteractive(c){
     const partial=PYRUN.transcript(r.events,true);
     if(!r.need){
       if(area) area.innerHTML="";
-      return partial;
+      return {text:partial,inputs:[...inputs],interactions:[...interactions]};
     }
 
     let promptText="請輸入資料：";
@@ -923,6 +1062,7 @@ async function executeInteractive(c){
       throw cancelErr;
     }
     inputs.push(value);
+    interactions.push({prompt:promptText,value});
   }
   throw Error("輸入次數太多，請檢查迴圈是否會正常結束。");
 }
@@ -950,9 +1090,9 @@ async function tryRunOnly(){
   b.textContent="🐍 執行中…";
   f.innerHTML="";
   try{
-    const t=await executeInteractive(c);
-    o.textContent=t||"程式執行完成，但目前沒有輸出內容。";
-    f.innerHTML='<div class="feedback runOnly">👀 這是你這次程式的執行結果。可以繼續修改、再執行；準備好後再按「✅ 檢查挑戰」。</div>';
+    const result=await executeInteractive(c);
+    o.textContent=result.text||"程式執行完成，但目前沒有輸出內容。";
+    f.innerHTML='<div class="feedback runOnly">👀 這是你這次程式的執行結果。自由測試不會檢查你輸入的內容；準備好後再按「✅ 檢查挑戰」。</div>';
   }catch(e){
     showRunError(e,c,o,f);
   }finally{
@@ -969,12 +1109,18 @@ async function checkChallenge(l,j,s){
   b.textContent="🔎 檢查中…";
   f.innerHTML="";
   try{
-    const t=await executeInteractive(c);
-    o.textContent=t||"程式執行完成，但目前沒有輸出內容。";
+    const result=await executeInteractive(c);
+    o.textContent=result.text||"程式執行完成，但目前沒有輸出內容。";
 
     let check=validate(c,s);
     if(!check.ok){
       f.innerHTML=`<div class="feedback wait">🔎 ${check.msg}<br><small>這就是目前還沒完成的條件。你可以先修改，再用「執行看看」測試。</small></div>`;
+      return;
+    }
+
+    const meaning=semanticValidate(s.rule,result.interactions);
+    if(!meaning.ok){
+      f.innerHTML=`<div class="feedback meaning">🧭 情境內容還要再確認：${esc(meaning.msg)}<br><small>程式寫法可能已經正確，但輸入內容也要符合題目的情境。</small></div>`;
       return;
     }
 
