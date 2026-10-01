@@ -75,6 +75,9 @@ function validate(code,step){
       if(countRx(n,/input\s*\(/g)<1) return fail("還沒有使用 input() 詢問資料。");
       if(vars.length<1) return fail("需要把 input() 的回答存進變數。");
       if(!outputUsesVars(code,vars,1)) return fail("最後要用 print() 顯示剛才保存的變數。");
+      const prompts=inputPromptLiterals(code);
+      if(!prompts.length || !meaningfulPrompt(prompts[0],"place"))
+        return fail("input() 裡的提示要清楚詢問城市／地點／目的地，不要用 ddddd 這類無意義文字。");
       return ok();
     }
     case "p2_two_inputs":{
@@ -82,6 +85,10 @@ function validate(code,step){
       if(countRx(n,/input\s*\(/g)<2) return fail("題目要求詢問姓名和班級兩項資料，需要 2 次 input()。");
       if(vars.length<2) return fail("兩項回答要放進 2 個不同變數。");
       if(!outputUsesVars(code,vars,2)) return fail("最後要把兩項資料都顯示出來。");
+      const prompts=inputPromptLiterals(code);
+      if(prompts.length<2) return fail("兩次 input() 都要有清楚的提示文字。");
+      if(!meaningfulPrompt(prompts[0],"name")) return fail("第一個 input() 的提示要清楚詢問姓名。");
+      if(!meaningfulPrompt(prompts[1],"className")) return fail("第二個 input() 的提示要清楚詢問班級。");
       return ok();
     }
     case "p2_three_inputs_print":{
@@ -89,6 +96,11 @@ function validate(code,step){
       if(countRx(n,/input\s*\(/g)<3) return fail("題目要求目的地、天數、活動三項資料，需要 3 次 input()。");
       if(vars.length<3) return fail("三項回答要分別存進 3 個不同變數。");
       if(!outputUsesVars(code,vars,3)) return fail("輸出時還沒有使用到全部 3 個變數。");
+      const prompts=inputPromptLiterals(code);
+      if(prompts.length<3) return fail("三次 input() 都要有清楚的提示文字。");
+      if(!meaningfulPrompt(prompts[0],"place")) return fail("第一個 input() 要清楚詢問目的地。");
+      if(!meaningfulPrompt(prompts[1],"days")) return fail("第二個 input() 要清楚詢問旅行天數。");
+      if(!meaningfulPrompt(prompts[2],"activity")) return fail("第三個 input() 要清楚詢問想做的活動。");
       return ok();
     }
     case "p3_multiply_int":
@@ -880,6 +892,27 @@ const OBVIOUS_NON_PLACE=[
 function cleanAnswer(v){
   return String(v??"").trim();
 }
+function inputPromptLiterals(code){
+  const out=[];
+  const rx=/input\s*\(\s*(["'])(.*?)\1\s*\)/g;
+  let m;
+  while((m=rx.exec(String(code||"")))!==null) out.push(m[2].trim());
+  return out;
+}
+function meaningfulPrompt(text,kind){
+  const x=String(text||"").trim();
+  if(x.length<2 || looksLikeGibberish(x)) return false;
+  const groups={
+    place:["城市","地點","地方","目的地","想去","哪裡","where","city","destination"],
+    name:["姓名","名字","name"],
+    className:["班級","class"],
+    days:["天數","幾天","days","day"],
+    activity:["活動","事情","想做","期待","activity"]
+  };
+  const words=groups[kind]||[];
+  const lower=x.toLowerCase();
+  return words.some(w=>lower.includes(String(w).toLowerCase()));
+}
 function looksLikeGibberish(v){
   const x=cleanAnswer(v);
   if(!x) return true;
@@ -1026,10 +1059,12 @@ function semanticValidate(rule,interactions){
   return ok();
 }
 
-function askInlineInput(promptText, partialText){
+function askInlineInput(promptText, partialText, isChecking=false){
   return new Promise(resolve=>{
     const area=$("#runInputArea");
     const out=$("#out");
+    const checkBtn=$("#checkChallenge");
+    if(isChecking&&checkBtn) checkBtn.textContent="⌨️ 等待你輸入…";
     if(out && partialText!==undefined){
       out.textContent=partialText||"程式正在等待輸入…";
     }
@@ -1051,21 +1086,37 @@ function askInlineInput(promptText, partialText){
     const cancel=$("#cancelRuntimeInput");
     input.focus();
 
+    let finished=false;
+    let timer=null;
+    const finish=value=>{
+      if(finished)return;
+      finished=true;
+      if(timer) clearTimeout(timer);
+      if(isChecking&&checkBtn) checkBtn.textContent="🔎 檢查中…";
+      resolve(value);
+    };
+
     form.addEventListener("submit",e=>{
       e.preventDefault();
       const value=input.value;
       area.innerHTML=`<div class="inputHistory">↳ 你輸入：<b>${esc(value)}</b></div>`;
-      resolve(value);
+      finish(value);
     },{once:true});
 
     cancel.addEventListener("click",()=>{
       area.innerHTML="";
-      resolve(null);
+      finish(null);
     },{once:true});
+
+    timer=setTimeout(()=>{
+      if(finished)return;
+      area.innerHTML='<div class="feedback wait">⌛ 等待輸入已逾時，這次檢查已取消。請重新按「檢查挑戰」。</div>';
+      finish(null);
+    },90000);
   });
 }
 
-async function executeInteractive(c){
+async function executeInteractive(c,isChecking=false){
   if(!window.PYRUN||engine!=="ready") throw Error("ENGINE");
   const inputs=[];
   const interactions=[];
@@ -1096,7 +1147,7 @@ async function executeInteractive(c){
       }
     }
 
-    const value=await askInlineInput(promptText,partial);
+    const value=await askInlineInput(promptText,partial,isChecking);
     if(value===null){
       const cancelErr=new Error("INPUT_CANCELLED");
       throw cancelErr;
@@ -1149,14 +1200,14 @@ async function checkChallenge(l,j,s){
   b.textContent="🔎 檢查中…";
   f.innerHTML="";
   try{
-    const result=await executeInteractive(c);
-    o.textContent=result.text||"程式執行完成，但目前沒有輸出內容。";
-
     let check=validate(c,s);
     if(!check.ok){
-      f.innerHTML=`<div class="feedback wait">🔎 ${check.msg}<br><small>這就是目前還沒完成的條件。你可以先修改，再用「執行看看」測試。</small></div>`;
+      f.innerHTML=`<div class="feedback wait">🔎 ${esc(check.msg)}<br><small>先修正這一點，再按「執行看看」測試。</small></div>`;
       return;
     }
+
+    const result=await executeInteractive(c,true);
+    o.textContent=result.text||"程式執行完成，但目前沒有輸出內容。";
 
     const meaning=semanticValidate(s.rule,result.interactions);
     if(!meaning.ok){
