@@ -25,7 +25,10 @@
       <span id="studentProfileText">尚未設定</span>
       <button id="cloudStatus" class="cloudStatus cloudButton" type="button">☁️ 檢查資料庫中</button>
     </div>
-    <button id="editProfileBtn" class="profileBtn">修改</button>
+    <div class="studentStripActions">
+      <button id="accountBtn" class="profileBtn accountBtn" type="button">🔐 學習帳號</button>
+      <button id="editProfileBtn" class="profileBtn" type="button">修改</button>
+    </div>
   </section>
   <div id="map"></div>
   <section id="mission"></section>
@@ -67,6 +70,26 @@
   </div>
 
   <button id="saveProfileBtn" class="startAdventureBtn">🚀 儲存並開始挑戰</button>
+</dialog>
+
+
+<dialog id="accountDialog" class="profileDialog accountDialog">
+  <div class="profileHero">🔐</div>
+  <h2>建立你的學習帳號</h2>
+  <p id="accountIntro">設定一次學習密碼後，以後換版本或重新進入，都可以回到同一筆學習紀錄。</p>
+
+  <div class="accountIdentity" id="accountIdentity"></div>
+
+  <label class="fieldLabel">學習密碼 <span>*</span></label>
+  <input id="accountPassword" class="profileInput" type="password" minlength="6" maxlength="40"
+         placeholder="至少 6 個字元" autocomplete="current-password">
+  <div class="fieldHelp">請記住自己的學習密碼。不要使用其他網站的重要密碼。</div>
+
+  <div id="accountError" class="profileError"></div>
+  <div class="accountButtons">
+    <button id="linkAccountBtn" class="startAdventureBtn" type="button">建立／綁定帳號</button>
+    <button id="loginAccountBtn" class="secondaryAdventureBtn" type="button">已有帳號，登入並取回進度</button>
+  </div>
 </dialog>
 
 <dialog id="varDialog" class="varDialog">
@@ -111,6 +134,9 @@ document.getElementById("varSearchBtn").onclick=searchVar;
 document.getElementById("varQuery").addEventListener("keydown",e=>{if(e.key==="Enter")searchVar()});
 document.getElementById("persistentVarBtn").onclick=openVarHelper;
 document.getElementById("editProfileBtn").onclick=()=>openProfileDialog(false);
+document.getElementById("accountBtn").onclick=()=>openAccountDialog(false);
+document.getElementById("linkAccountBtn").onclick=linkLearningAccount;
+document.getElementById("loginAccountBtn").onclick=loginLearningAccount;
 document.getElementById("saveProfileBtn").onclick=saveStudentProfile;
 document.getElementById("cloudStatus").onclick=openFirebaseDiagnostic;
 document.getElementById("closeFirebaseDiag").onclick=()=>document.getElementById("firebaseDiagDialog").close();

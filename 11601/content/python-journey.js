@@ -453,6 +453,166 @@ function updateProfileStrip(){
     :"尚未設定";
 }
 
+function updateAccountButton(){
+  const btn=document.getElementById("accountBtn");
+  if(!btn)return;
+  if(window.CourseDB&&CourseDB.state==="ready"&&!CourseDB.isAnonymous()){
+    btn.textContent="🔐 學習帳號已連結";
+    btn.classList.add("linked");
+  }else{
+    btn.textContent="🔐 學習帳號";
+    btn.classList.remove("linked");
+  }
+}
+
+function mergeProgress(a,b){
+  const out={...(a||{})};
+  Object.entries(b||{}).forEach(([k,v])=>{
+    out[k]=Math.max(Number(out[k]||0),Number(v||0));
+  });
+  return out;
+}
+
+function starsOfProgress(progress){
+  return Object.values(progress||{}).reduce((n,v)=>n+Number(v||0),0);
+}
+
+function openAccountDialog(required=false){
+  const p=getStudentProfile();
+  if(!profileIsValid(p)){
+    openProfileDialog(true);
+    return;
+  }
+  const dlg=document.getElementById("accountDialog");
+  const identity=document.getElementById("accountIdentity");
+  const err=document.getElementById("accountError");
+  const intro=document.getElementById("accountIntro");
+  const pass=document.getElementById("accountPassword");
+  if(identity)identity.textContent=`班級 ${p.className}｜座號 ${p.seatNo}｜${p.name}`;
+  if(err)err.textContent="";
+  if(pass)pass.value="";
+  if(intro){
+    intro.textContent=required
+      ?"為避免同一位學生產生多筆紀錄，請建立或登入學習帳號後繼續。"
+      :"設定一次學習密碼後，以後換版本或重新進入，都可以回到同一筆學習紀錄。";
+  }
+  dlg.dataset.required=required?"1":"0";
+  dlg.showModal();
+}
+
+function accountPassword(){
+  return String(document.getElementById("accountPassword")?.value||"");
+}
+
+function validLearningPassword(pw){
+  return pw.length>=6&&pw.length<=40;
+}
+
+async function adoptRemoteAndLocalProgress(){
+  const localProgress={...state};
+  const localStars=total();
+  const localProfile=getStudentProfile();
+  const remote=await CourseDB.loadStudent();
+
+  if(remote?.progress){
+    state=mergeProgress(localProgress,remote.progress);
+  }else{
+    state=localProgress;
+  }
+  localStorage.setItem(KEY,JSON.stringify(state));
+
+  if(remote?.name&&remote?.className&&remote?.seatNo){
+    const sameSeat=String(remote.className)===String(localProfile.className)
+      && String(remote.seatNo)===String(localProfile.seatNo);
+    if(sameSeat){
+      const restored={
+        ...localProfile,
+        name:String(remote.name||localProfile.name),
+        updatedAt:new Date().toISOString()
+      };
+      localStorage.setItem(PROFILE_KEY,JSON.stringify(restored));
+      localStorage.setItem(NAMEKEY,restored.name);
+    }
+  }
+
+  render();
+  updateProfileStrip();
+  await syncCloudProgress();
+  return Math.max(localStars,Number(remote?.stars||0),starsOfProgress(state));
+}
+
+async function linkLearningAccount(){
+  const p=getStudentProfile();
+  const err=document.getElementById("accountError");
+  const pw=accountPassword();
+  if(!profileIsValid(p)){openProfileDialog(true);return;}
+  if(!validLearningPassword(pw)){
+    err.textContent="學習密碼至少需要 6 個字元。";
+    return;
+  }
+  try{
+    err.textContent="正在建立學習帳號…";
+    await CourseDB.ready;
+    if(!CourseDB.isAnonymous()){
+      err.textContent="這台瀏覽器已經登入學習帳號。";
+      updateAccountButton();
+      return;
+    }
+    await CourseDB.linkStudentAccount(p.className,p.seatNo,pw);
+    await adoptRemoteAndLocalProgress();
+    updateAccountButton();
+    document.getElementById("accountDialog").close();
+    updateCloudStatus("☁️ 學習帳號已連結，進度已保留","ok");
+  }catch(e){
+    if(e?.code==="auth/email-already-in-use"||e?.code==="auth/credential-already-in-use"){
+      err.textContent="這個班級與座號已經有學習帳號。請輸入原本的學習密碼，再按「已有帳號，登入並取回進度」。";
+    }else{
+      err.textContent="帳號建立失敗："+(e?.message||"請稍後再試");
+    }
+  }
+}
+
+async function loginLearningAccount(){
+  const p=getStudentProfile();
+  const err=document.getElementById("accountError");
+  const pw=accountPassword();
+  if(!profileIsValid(p)){openProfileDialog(true);return;}
+  if(!validLearningPassword(pw)){
+    err.textContent="請輸入至少 6 個字元的學習密碼。";
+    return;
+  }
+
+  // 先保留目前瀏覽器上的進度；登入既有帳號後再與雲端取較完整的進度。
+  const localSnapshot={...state};
+  try{
+    err.textContent="正在登入並取回進度…";
+    await CourseDB.signInStudentAccount(p.className,p.seatNo,pw);
+    state=localSnapshot;
+    await adoptRemoteAndLocalProgress();
+    updateAccountButton();
+    document.getElementById("accountDialog").close();
+    updateCloudStatus("☁️ 已登入學習帳號，進度已合併","ok");
+  }catch(e){
+    if(e?.code==="auth/invalid-credential"||e?.code==="auth/wrong-password"||e?.code==="auth/user-not-found"){
+      err.textContent="學習密碼不正確，或這個班級座號尚未建立帳號。";
+    }else{
+      err.textContent="登入失敗："+(e?.message||"請稍後再試");
+    }
+  }
+}
+
+function ensureStableStudentAccount(){
+  updateAccountButton();
+  if(
+    window.CourseDB &&
+    CourseDB.state==="ready" &&
+    CourseDB.isAnonymous() &&
+    profileIsValid(getStudentProfile())
+  ){
+    openAccountDialog(true);
+  }
+}
+
 function updateCloudStatus(text,kind=""){
   const el=document.getElementById("cloudStatus");
   if(!el)return;
@@ -568,6 +728,7 @@ async function saveStudentProfile(){
   updateProfileStrip();
   document.getElementById("profileDialog").close();
   await syncCloudProgress();
+  ensureStableStudentAccount();
 }
 
 function ensureStudentProfile(){
@@ -601,16 +762,20 @@ async function restoreCloudState(){
           localStorage.setItem(NAMEKEY,restored.name);
         }
       }
-      if(remote.progress&&Number(remote.stars||0)>total()){
-        state=remote.progress;
+      if(remote.progress){
+        state=mergeProgress(state,remote.progress);
         localStorage.setItem(KEY,JSON.stringify(state));
         render();
       }
     }
     updateProfileStrip();
+    updateAccountButton();
     updateCloudStatus("☁️ 已連接教師資料庫","ok");
     ensureStudentProfile();
-    if(profileIsValid(getStudentProfile()))await syncCloudProgress();
+    if(profileIsValid(getStudentProfile())){
+      await syncCloudProgress();
+      ensureStableStudentAccount();
+    }
   }catch(e){
     updateCloudStatus("⚠️ 資料庫連線失敗（點此查看原因）","error");
     ensureStudentProfile();

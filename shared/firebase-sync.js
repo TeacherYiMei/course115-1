@@ -15,6 +15,15 @@
     return totalStars?Math.round(Number(stars||0)/Number(totalStars)*100):0;
   }
 
+  function normalizedSeat(seatNo){
+    return String(Number(String(seatNo||"").trim())).padStart(2,"0");
+  }
+
+  function studentAccountEmail(className,seatNo){
+    // 不使用學生真實 Email；僅作 Firebase Email/Password 的穩定帳號識別。
+    return `python1151-${String(className||"").trim()}-${normalizedSeat(seatNo)}@student.course115.local`;
+  }
+
   const api={
     configured:configured(),
     state:"starting",
@@ -41,6 +50,37 @@
     async reconnect(){
       api.error=null;api.errorCode="";api.errorMessage="";
       return await initialize(true);
+    },
+
+    isAnonymous(){
+      return !!currentUser?.isAnonymous;
+    },
+
+    accountEmail(className,seatNo){
+      return studentAccountEmail(className,seatNo);
+    },
+
+    async linkStudentAccount(className,seatNo,password){
+      await api.ready;
+      if(!currentUser||!auth||!authMod) throw Error("AUTH_NOT_READY");
+      const email=studentAccountEmail(className,seatNo);
+      const credential=authMod.EmailAuthProvider.credential(email,password);
+      const result=await authMod.linkWithCredential(currentUser,credential);
+      currentUser=result.user;
+      api.uid=currentUser.uid;
+      api.stage="學生學習帳號已綁定";
+      return {ok:true,uid:currentUser.uid,email};
+    },
+
+    async signInStudentAccount(className,seatNo,password){
+      await api.ready;
+      if(!auth||!authMod) throw Error("AUTH_NOT_READY");
+      const email=studentAccountEmail(className,seatNo);
+      const result=await authMod.signInWithEmailAndPassword(auth,email,password);
+      currentUser=result.user;
+      api.uid=currentUser.uid;
+      api.stage="學生學習帳號登入完成";
+      return {ok:true,uid:currentUser.uid,email};
     },
 
     async saveStudent(payload){

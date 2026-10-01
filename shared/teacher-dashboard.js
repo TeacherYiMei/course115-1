@@ -31,6 +31,45 @@
       String(a.name||"").localeCompare(String(b.name||""),"zh-Hant");
   }
 
+  function progressSum(progress){
+    return Object.values(progress||{}).reduce((n,v)=>n+Number(v||0),0);
+  }
+
+  function mergeDuplicateStudents(rows){
+    const groups=new Map();
+    for(const row of rows){
+      const key=`${String(row.className||"").trim()}::${String(row.seatNo||"").trim()}`;
+      if(!groups.has(key)) groups.set(key,[]);
+      groups.get(key).push(row);
+    }
+
+    return [...groups.values()].map(group=>{
+      group.sort((a,b)=>
+        Number(b.stars||0)-Number(a.stars||0) ||
+        progressSum(b.progress)-progressSum(a.progress)
+      );
+      const best={...group[0]};
+      best.duplicateCount=group.length;
+      if(group.length>1){
+        const merged={};
+        for(const r of group){
+          for(const [k,v] of Object.entries(r.progress||{})){
+            merged[k]=Math.max(Number(merged[k]||0),Number(v||0));
+          }
+        }
+        const mergedStars=progressSum(merged);
+        if(mergedStars>Number(best.stars||0)){
+          best.progress=merged;
+          best.stars=mergedStars;
+          best.score=best.totalStars
+            ? Math.round(mergedStars/Number(best.totalStars)*100)
+            : Number(best.score||0);
+        }
+      }
+      return best;
+    });
+  }
+
   function isAdmin(){
     return teacherProfile?.role==="admin";
   }
@@ -69,6 +108,7 @@
       <td>${esc(r.currentStation||"")} ${r.currentChallenge?`・第 ${r.currentChallenge} 題`:""}</td>
       <td><span class="badge ${r.completed?"done":""}">${r.completed?"已完成":"進行中"}</span></td>
       <td>${esc(fmtTime(r.updatedAt))}</td>
+      <td>${Number(r.duplicateCount||1)>1?`<span class="badge">已合併顯示 ${Number(r.duplicateCount)} 筆</span>`:"1 筆"}</td>
     </tr>`).join("");
   }
 
@@ -143,6 +183,7 @@
         currentRows=[...seen.values()];
       }
 
+      currentRows=mergeDuplicateStudents(currentRows);
       buildClassFilter();
       render();
       $("#dbStatus").textContent=`最後更新：${new Date().toLocaleTimeString("zh-TW")}`;
@@ -180,13 +221,14 @@
       "評分":Number(r.score||0),
       "完成狀態":r.completed?"已完成":"進行中",
       "目前進度":`${r.currentStation||""}${r.currentChallenge?` 第${r.currentChallenge}題`:""}`,
-      "最近更新":fmtTime(r.updatedAt)
+      "最近更新":fmtTime(r.updatedAt),
+      "原始紀錄筆數":Number(r.duplicateCount||1)
     }));
 
     const ws=XLSX.utils.json_to_sheet(data);
     ws["!cols"]=[
       {wch:8},{wch:7},{wch:12},{wch:7},{wch:8},
-      {wch:7},{wch:10},{wch:28},{wch:20}
+      {wch:7},{wch:10},{wch:28},{wch:20},{wch:12}
     ];
 
     const wb=XLSX.utils.book_new();

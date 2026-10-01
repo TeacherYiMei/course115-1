@@ -195,3 +195,35 @@ dialog{border:0;border-radius:22px;box-shadow:0 30px 90px #1d273d55}dialog::back
     width:100%;
   }
 }
+
+
+/* v10：穩定學生帳號與進度留存 */
+.studentStripActions{display:flex;gap:.45rem;flex-wrap:wrap}
+.accountBtn.linked{background:#e8f5ec;color:#246b3a}
+.accountDialog[data-required="1"]::backdrop{background:#1d2748a8}
+.accountIdentity{
+  margin:.8rem 0 1rem;
+  padding:.75rem .9rem;
+  border-radius:12px;
+  background:#f3f6f8;
+  font-weight:800;
+  color:#445064;
+}
+.fieldHelp{font-size:.82rem;color:#667085;margin:.35rem 0 .65rem}
+.accountButtons{display:grid;gap:.65rem;margin-top:.6rem}
+.secondaryAdventureBtn{
+  width:100%;
+  min-height:46px;
+  border:1px solid #b7c0cc;
+  background:#fff;
+  color:#344054;
+  border-radius:12px;
+  padding:.75rem 1rem;
+  font-weight:800;
+  cursor:pointer;
+}
+@media (max-width:640px){
+  .studentStrip{align-items:flex-start}
+  .studentStripActions{width:100%}
+  .studentStripActions .profileBtn{flex:1}
+}
