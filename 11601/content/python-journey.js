@@ -18,7 +18,28 @@ function pos(){
   }
   return {i:LEVELS.length,j:0};
 }
-function save(){localStorage.setItem(KEY,JSON.stringify(state));syncCloudProgress()}
+function syncCourse116HubProgress(){
+  if(!(window.STORE&&typeof STORE.saveLevel==="function"&&STORE.me&&STORE.me()))return;
+  for(const l of LEVELS){
+    const n=done(l.id);
+    const courseId=l.id.toUpperCase();
+    const complete=n>=stepsOf(l);
+    const oldRec=STORE.level("python",courseId);
+    const oldStars=Number(oldRec?.stars||0);
+    if(n>oldStars || (complete && !oldRec?.done)){
+      STORE.saveLevel("python",courseId,{
+        stars:n,
+        done:complete,
+        score:Math.round(n/stepsOf(l)*100),
+        extra:{challengesDone:n,challengesTotal:stepsOf(l)}
+      });
+    }
+  }
+}
+function save(){
+  localStorage.setItem(KEY,JSON.stringify(state));
+  syncCourse116HubProgress();
+}
 function esc(s){return String(s||"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")}
 function norm(s){return String(s||"").replace(/\s+/g," ").trim()}
 function countRx(code,rx){return (code.match(rx)||[]).length}
@@ -420,7 +441,40 @@ function searchVar(){
 
 
 function getStudentProfile(){
-  try{return JSON.parse(localStorage.getItem(PROFILE_KEY)||"null")}catch(e){return null}
+  try{
+    let p=JSON.parse(localStorage.getItem(PROFILE_KEY)||"null");
+    if(profileIsValidLocalShape(p)) return p;
+
+    // 完整 course116 整合：若學生已在 116-1 闖關地圖登入，
+    // 第一次進 Python 時直接承接班級、座號、姓名，避免再填一次。
+    if(window.STORE&&typeof STORE.me==="function"){
+      const me=STORE.me();
+      if(me&&me.cls&&me.seat&&me.name){
+        const imported={
+          className:String(me.cls),
+          seatNo:String(Number(me.seat)),
+          name:String(me.name),
+          courseId:"python",
+          createdAt:new Date().toISOString(),
+          updatedAt:new Date().toISOString()
+        };
+        localStorage.setItem(PROFILE_KEY,JSON.stringify(imported));
+        localStorage.setItem(NAMEKEY,imported.name);
+        return imported;
+      }
+    }
+    return p;
+  }catch(e){return null}
+}
+
+function profileIsValidLocalShape(p){
+  if(!p)return false;
+  const c=String(p.className||"").trim();
+  const s=String(p.seatNo||"").trim();
+  const n=String(p.name||"").trim();
+  return /^[1-9][0-9]{2}$/.test(c) &&
+         /^(?:[1-9]|[1-9][0-9])$/.test(s) &&
+         n.length>=2 && n.length<=20;
 }
 
 function validateStudentProfile(className,seatNo,name){
@@ -510,8 +564,8 @@ function openAccountDialog(required=false){
   if(pass)pass.value="";
   if(intro){
     intro.textContent=required
-      ?"為避免同一位學生產生多筆紀錄，請建立或登入學習帳號後繼續。"
-      :"設定一次學習密碼後，以後換版本或重新進入，都可以回到同一筆學習紀錄。";
+      ?"為避免關機還原後遺失進度，請先建立或登入學習帳號。舊版從未設定密碼的學生，請由老師使用「🔑 舊帳號救援」。"
+      :"設定學習密碼後，以後重新登入會從雲端取回正式進度。舊版無密碼帳號可請老師救援。";
   }
   dlg.dataset.required=required?"1":"0";
   dlg.showModal();
@@ -532,7 +586,9 @@ async function adoptRemoteAndLocalProgress(){
   const remote=await CourseDB.loadStudent();
 
   if(remote?.progress){
-    state=mergeProgress(localProgress,remote.progress);
+    state={...remote.progress};
+  }else if(!CourseDB.isAnonymous()){
+    state={};
   }else{
     state=localProgress;
   }
@@ -576,6 +632,7 @@ async function linkLearningAccount(){
       return;
     }
     await CourseDB.linkStudentAccount(p.className,p.seatNo,pw);
+    await CourseDB.saveStudent(p);
     await adoptRemoteAndLocalProgress();
     updateAccountButton();
     document.getElementById("accountDialog").close();
@@ -604,6 +661,7 @@ async function loginLearningAccount(){
   try{
     err.textContent="正在登入並取回進度…";
     await CourseDB.signInStudentAccount(p.className,p.seatNo,pw);
+    await CourseDB.saveStudent(p);
     state=localSnapshot;
     await adoptRemoteAndLocalProgress();
     updateAccountButton();
@@ -695,33 +753,16 @@ async function retryFirebaseConnection(){
 }
 async function syncCloudProgress(){
   const profile=getStudentProfile();
-  if(!profileIsValid(profile))return;
-  if(!window.CourseDB){updateCloudStatus("💾 僅儲存在本機","local");return;}
+  if(!profileIsValid(profile))return false;
+  if(!window.CourseDB){updateCloudStatus("⚠️ 需要連線教師資料庫才能正式闖關","error");return false;}
   try{
     await CourseDB.ready;
-    if(!CourseDB.configured||CourseDB.state==="disabled"){
-      updateCloudStatus("💾 本機模式","local");return;
-    }
-    if(CourseDB.state!=="ready"){
-      updateCloudStatus("⚠️ 資料庫連線失敗（點此查看原因）","error");return;
-    }
-    updateCloudStatus("☁️ 同步中…","syncing");
-    const cur=currentProgressInfo();
-    await CourseDB.saveStudent({
-      ...profile,
-      progress:state,
-      stars:total(),
-      totalStars:TOTAL_CHALLENGES,
-      completed:total()>=TOTAL_CHALLENGES,
-      currentStation:cur.station,
-      currentChallenge:cur.challenge
-    });
-    updateCloudStatus("☁️ 已同步教師資料庫","ok");
-  }catch(e){
-    updateCloudStatus("⚠️ 同步失敗（點此查看原因）","error");
-  }
+    if(!CourseDB.configured||CourseDB.state!=="ready"){updateCloudStatus("⚠️ 資料庫尚未連線，暫時不能正式過關","error");return false;}
+    if(CourseDB.isAnonymous()){updateCloudStatus("🔐 請先建立／登入學習帳號","error");ensureStableStudentAccount();return false;}
+    await CourseDB.saveStudent(profile);
+    updateCloudStatus("☁️ 雲端正式進度已連線","ok");return true;
+  }catch(e){updateCloudStatus("⚠️ 雲端同步失敗，暫時不能正式過關","error");return false;}
 }
-
 async function saveStudentProfile(){
   const className=document.getElementById("profileClass").value.trim();
   const seatNo=document.getElementById("profileSeatNo").value.trim();
@@ -780,13 +821,14 @@ async function restoreCloudState(){
         }
       }
       if(remote.progress){
-        state=mergeProgress(state,remote.progress);
+        state={...remote.progress};
         localStorage.setItem(KEY,JSON.stringify(state));
         render();
       }
     }
     updateProfileStrip();
     updateAccountButton();
+    syncCourse116HubProgress();
     updateCloudStatus("☁️ 已連接教師資料庫","ok");
     ensureStudentProfile();
     if(profileIsValid(getStudentProfile())){
@@ -1215,10 +1257,17 @@ async function checkChallenge(l,j,s){
       return;
     }
 
-    if(done(l.id)<j+1){state[l.id]=j+1;save()}
-    let stationDone=(j+1===stepsOf(l));
-    let allDone=(pos().i>=LEVELS.length);
-    reward(stationDone,allDone);
+    if(!window.CourseDB || CourseDB.state!=="ready" || CourseDB.isAnonymous()){
+      updateCloudStatus("🔐 必須先登入學習帳號，雲端驗證成功後才能解鎖","error");
+      ensureStableStudentAccount();
+      f.innerHTML='<div class="feedback wait">🔐 本機檢查已通過，但尚未取得雲端正式認證，所以不會增加星星。</div>';
+      return;
+    }
+    b.textContent="☁️ 雲端驗證中…";
+    const cloud=await CourseDB.verifyChallenge({levelId:l.id,challenge:j+1,code:c});
+    state={...(cloud.progress||{})};save();
+    updateCloudStatus("☁️ 正式進度已保存","ok");
+    reward(j+1===stepsOf(l),!!cloud.completed);
   }catch(e){
     showRunError(e,c,o,f);
   }finally{
